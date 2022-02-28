@@ -99,6 +99,15 @@ def handle_li(line):
     else:
         REGISTERS[reg[0]]=hexadecimal_to_decimal(reg[1]) 
 
+def handle_lui(line):
+    reg =line.split(',');
+    reg = list(map(str.strip, reg))
+    if reg[1].find("0x")<0:   #means we did not find "0x"
+        const = int(reg[1])
+        REGISTERS[reg[0]]=const*16*16*16    # Because we have to store it in upper half
+    else:
+        REGISTERS[reg[0]]=hexadecimal_to_decimal(reg[1]+"000") 
+
 def handle_sw(line):
     reg =line.split(',');
     reg = list(map(str.strip, reg))
@@ -142,11 +151,27 @@ def handle_beqz(line):
     reg = list(map(str.strip, reg))
     if(REGISTERS[reg[0]] == 0):
         i=LABELS[reg[1]]-1;
+def handle_bnez(line):
+    global i
+    reg =line.split(',');
+    reg = list(map(str.strip, reg))
+    if(REGISTERS[reg[0]] != 0):
+        i=LABELS[reg[1]]-1;
+def handle_blez(line):
+    global i
+    reg =line.split(',');
+    reg = list(map(str.strip, reg))
+    if(REGISTERS[reg[0]] <= 0):
+        i=LABELS[reg[1]]-1;
 
 def handle_j(line):
     global i
     label = line.strip()
     i=LABELS[label]-1
+def handle_mv(line):
+    reg =line.split(',');
+    reg = list(map(str.strip, reg))
+    REGISTERS[reg[0]]=REGISTERS[reg[1]]
 
 def callFunction(opcode,line):
     if(opcode == "add"):
@@ -170,6 +195,9 @@ def callFunction(opcode,line):
     if(opcode == "li"):
         handle_li(line)
         return
+    if(opcode == "lui"):
+        handle_lui(line)
+        return
     if(opcode == "bne"):
         handle_bne(line)
         return
@@ -185,8 +213,17 @@ def callFunction(opcode,line):
     if(opcode == "beqz"):
         handle_beqz(line)
         return
+    if(opcode == "bnez"):
+        handle_bnez(line)
+        return
+    if(opcode == "blez"):
+        handle_blez(line)
+        return
     if(opcode == "j"):
         handle_j(line)
+        return
+    if(opcode == "mv"):
+        handle_mv(line)
         return
 
 def remove_side_comment(line):
@@ -239,9 +276,13 @@ print(REGISTERS)
 #   lw  rd, offset(r1)   
 #   sw  rs, offset(r1) 
 #   li rd, c
+#   lui rd, c
 #   bne r1,r2,LABEL
 #   beq r1,r2,LABEL
 #   blt r1,r2,LABEL
 #   bgt r1,r2,LABEL
 #   beqz r1,LABEL
+#   bnez r1,LABEL
+#   blez r1,LABEL
 #   j LABEL
+#   mv , rd, rs

@@ -2,6 +2,8 @@
 
 li x1, -36
 addi x2, x1, 0x0000002f
+lui x5, 0x11000
+mv x4, x5
 # blt x1 ,x2,label2
 # label1    :  li x3, 40
 # label2    :  li x4, 3330
