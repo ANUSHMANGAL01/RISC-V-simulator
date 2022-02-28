@@ -7,15 +7,51 @@ file.close()
 
 global i
 i=0
-MEMORY = [0]*1024*2
-MEMORY[10] =10;
-INSTR_MEMORY = {}
+# We will take the base address for user to store in memory to be 0x10010000
+# Each element in the MEMORY array below if for four bytes. Since we are only dealing here with lw and sw commands, this won't cause any problem
+#  If the user enters any address of memory to refer it, we will divide it by four to get the correct address in the MEMORY array below
+# Also, in the memory, we will storing the numbers in decimal format only
+MEMORY = [0]*32768
 LABELS = {}
-REGISTERS = {'x0': 0, 'x1': 0, 'x2': 10, 'x3': 0, 'x4': 0, 'x5': 0, 'x6': 0, 'x7': 0, 'x8': 0,
+REGISTERS = {'x0': 0, 'x1': 0, 'x2': 0, 'x3': 0, 'x4': 0, 'x5': 0, 'x6': 0, 'x7': 0, 'x8': 0,
              'x9': 0, 'x10': 0, 'x11': 0, 'x12': 0, 'x13': 0, 'x14': 0, 'x15': 0, 'x16': 0, 'x17': 0,
              'x18': 0, 'x19': 0, 'x20': 0, 'x21': 0, 'x22': 0, 'x23': 0, 'x24': 0, 'x25': 0, 'x26': 0, 'x27': 0,
              'x28': 0, 'x29': 0, 'x30': 0, 'x31': '0'}
 ASSEMBLER_DIRECTIVES = {".text": 0 ,".data": 0}
+
+
+def hexadecimal_to_decimal(hex_string):
+    hex_string= hex_string[2:]   # removing the first two "0x"
+    res = "{0:032b}".format(int(hex_string, 16))
+    # print(res)
+    # print(type(res))
+    if(res[0]=='1'):
+        res = get_complement(res)
+        return int(res, 2) * -1
+    else:
+        return int(res, 2)    
+
+
+def get_complement(binary_string):
+    i=len(binary_string) - 1
+    new_string=""
+    while(i>=0 and binary_string[i]=='0'):
+        new_string='0' + new_string
+        i-=1
+    # print(new_string)
+    if(i<0):
+        return new_string
+    
+    new_string = '1'+new_string
+    i-=1
+    while(i>=0):
+        if(binary_string[i]=='0'):
+            new_string='1'+new_string
+        else:
+            new_string='0'+new_string
+        i-=1
+    return new_string
+
 
 def handle_add(line):
     reg =line.split(',');
@@ -25,7 +61,12 @@ def handle_add(line):
 def handle_addi(line):
     reg =line.split(',');
     reg = list(map(str.strip, reg))
-    REGISTERS[reg[0]]=REGISTERS[reg[1]]+int(reg[2])
+    const =0
+    if reg[2].find("0x")<0:   #means we did not find "0x"
+        const = int(reg[2])       
+    else:
+        const= hexadecimal_to_decimal(reg[2]) 
+    REGISTERS[reg[0]]=REGISTERS[reg[1]]+const
 
 def handle_sub(line):
     reg =line.split(',');
@@ -52,8 +93,11 @@ def handle_lw(line):
 def handle_li(line):
     reg =line.split(',');
     reg = list(map(str.strip, reg))
-    const = int(reg[1])
-    REGISTERS[reg[0]]=const 
+    if reg[1].find("0x")<0:   #means we did not find "0x"
+        const = int(reg[1])
+        REGISTERS[reg[0]]=const
+    else:
+        REGISTERS[reg[0]]=hexadecimal_to_decimal(reg[1]) 
 
 def handle_sw(line):
     reg =line.split(',');
@@ -154,6 +198,12 @@ def find_labels():
     j=0
     while j < len(lines):
         line=lines[j].strip()
+        if line=="":
+            j+=1
+            continue
+        if(line[0]=='#'):
+            j+=1
+            continue
         label=""
         if(line.find(':')>0):
             label=line[0:line.find(':')].strip()
@@ -167,16 +217,20 @@ find_labels()
 
 while i < len(lines):
     line=lines[i].strip()
+    if line=="":
+        i+=1
+        continue
     if line[0]=='#':
         i+=1
         continue
+    print(line)
     line = remove_side_comment(line)
     opcode = line[0 : line.find(' ')].strip()
     callFunction(opcode,line[line.find(' '):].strip())
     i+=1
 
 print(REGISTERS)
-print(LABELS)
+
 
 #   add rd , r1 , r2
 #   addi rd , r1 , c
