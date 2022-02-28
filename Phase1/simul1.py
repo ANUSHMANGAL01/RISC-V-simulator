@@ -7,11 +7,17 @@ file.close()
 
 global i
 i=0
-# We will take the base address for user to store in memory to be 0x10010000
+# We will take the base address for user to store in memory to be 0x10010000 which is 268500992
 # Each element in the MEMORY array below if for four bytes. Since we are only dealing here with lw and sw commands, this won't cause any problem
 #  If the user enters any address of memory to refer it, we will divide it by four to get the correct address in the MEMORY array below
 # Also, in the memory, we will storing the numbers in decimal format only
 MEMORY = [0]*32768
+MEMORY[16384] = 7
+MEMORY[16385] = 10
+MEMORY[16386] = 5
+#  The above locations for MEMORY have been initialised just for testing purpose. They will not be there in the final version
+
+
 LABELS = {}
 REGISTERS = {'x0': 0, 'x1': 0, 'x2': 0, 'x3': 0, 'x4': 0, 'x5': 0, 'x6': 0, 'x7': 0, 'x8': 0,
              'x9': 0, 'x10': 0, 'x11': 0, 'x12': 0, 'x13': 0, 'x14': 0, 'x15': 0, 'x16': 0, 'x17': 0,
@@ -87,8 +93,8 @@ def handle_lw(line):
     arg = reg[1]
     offset=int(arg[0:arg.find('(')].strip())
     arg=arg[arg.find('(')+1 : arg.find(')')]
-    ma = REGISTERS[arg]+offset;
-    REGISTERS[reg[0]]=MEMORY[ma] 
+    ma = REGISTERS[arg]+offset
+    REGISTERS[reg[0]]=MEMORY[(ma-268500992)//4] 
 
 def handle_li(line):
     reg =line.split(',');
@@ -115,7 +121,7 @@ def handle_sw(line):
     offset=int(arg[0:arg.find('(')].strip())
     arg=arg[arg.find('(')+1 : arg.find(')')]
     ma = REGISTERS[arg]+offset;
-    MEMORY[ma]=REGISTERS[reg[0]]
+    MEMORY[(ma-268500992)//4]=REGISTERS[reg[0]]
 
 def handle_bne(line):
     global i
@@ -260,7 +266,6 @@ while i < len(lines):
     if line[0]=='#':
         i+=1
         continue
-    print(line)
     line = remove_side_comment(line)
     opcode = line[0 : line.find(' ')].strip()
     callFunction(opcode,line[line.find(' '):].strip())
