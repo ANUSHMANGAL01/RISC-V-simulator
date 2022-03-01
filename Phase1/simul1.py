@@ -60,12 +60,13 @@ def get_complement(binary_string):
 
 
 def handle_add(line):
-    reg =line.split(',');
+    reg =line.split(',')
     reg = list(map(str.strip, reg))
     REGISTERS[reg[0]]=REGISTERS[reg[1]]+REGISTERS[reg[2]]
+    REGISTERS['x0'] = 0
 
 def handle_addi(line):
-    reg =line.split(',');
+    reg =line.split(',')
     reg = list(map(str.strip, reg))
     const =0
     if reg[2].find("0x")<0:   #means we did not find "0x"
@@ -73,111 +74,149 @@ def handle_addi(line):
     else:
         const= hexadecimal_to_decimal(reg[2]) 
     REGISTERS[reg[0]]=REGISTERS[reg[1]]+const
+    REGISTERS['x0'] = 0
 
 def handle_sub(line):
-    reg =line.split(',');
+    reg =line.split(',')
     reg = list(map(str.strip, reg))
     REGISTERS[reg[0]]=REGISTERS[reg[1]]-REGISTERS[reg[2]]
+    REGISTERS['x0'] = 0
 
 def handle_slt(line):
-    reg =line.split(',');
+    reg =line.split(',')
     reg = list(map(str.strip, reg))
     if(REGISTERS[reg[1]]<REGISTERS[reg[2]]):
         REGISTERS[reg[0]]=1
     else:
         REGISTERS[reg[0]]=0
+    REGISTERS['x0'] = 0
 
 def handle_lw(line):
-    reg =line.split(',');
+    reg =line.split(',')
     reg = list(map(str.strip, reg))
     arg = reg[1]
     offset=int(arg[0:arg.find('(')].strip())
     arg=arg[arg.find('(')+1 : arg.find(')')]
     ma = REGISTERS[arg]+offset
     REGISTERS[reg[0]]=MEMORY[(ma-268500992)//4] 
+    REGISTERS['x0'] = 0
 
 def handle_li(line):
-    reg =line.split(',');
+    reg =line.split(',')
     reg = list(map(str.strip, reg))
     if reg[1].find("0x")<0:   #means we did not find "0x"
         const = int(reg[1])
         REGISTERS[reg[0]]=const
     else:
         REGISTERS[reg[0]]=hexadecimal_to_decimal(reg[1]) 
+    REGISTERS['x0'] = 0
 
 def handle_lui(line):
-    reg =line.split(',');
+    reg =line.split(',')
     reg = list(map(str.strip, reg))
     if reg[1].find("0x")<0:   #means we did not find "0x"
         const = int(reg[1])
         REGISTERS[reg[0]]=const*16*16*16    # Because we have to store it in upper half
     else:
         REGISTERS[reg[0]]=hexadecimal_to_decimal(reg[1]+"000") 
+    REGISTERS['x0'] = 0
 
 def handle_sw(line):
-    reg =line.split(',');
+    reg =line.split(',')
     reg = list(map(str.strip, reg))
     arg = reg[1]
     offset=int(arg[0:arg.find('(')].strip())
     arg=arg[arg.find('(')+1 : arg.find(')')]
     ma = REGISTERS[arg]+offset;
     MEMORY[(ma-268500992)//4]=REGISTERS[reg[0]]
+    REGISTERS['x0'] = 0
 
 def handle_bne(line):
     global i
-    reg =line.split(',');
+    reg =line.split(',')
     reg = list(map(str.strip, reg))
     if(REGISTERS[reg[0]]!=REGISTERS[reg[1]]):
-        i=LABELS[reg[2]]-1;
+        i=LABELS[reg[2]]-1
+    REGISTERS['x0'] = 0
 
 def handle_beq(line):
     global i
-    reg =line.split(',');
+    reg =line.split(',')
     reg = list(map(str.strip, reg))
     if(REGISTERS[reg[0]]==REGISTERS[reg[1]]):
-        i=LABELS[reg[2]]-1;
+        i=LABELS[reg[2]]-1
+    REGISTERS['x0'] = 0
 
 def handle_blt(line):
     global i
-    reg =line.split(',');
+    reg =line.split(',')
     reg = list(map(str.strip, reg))
     if(REGISTERS[reg[0]] < REGISTERS[reg[1]]):
-        i=LABELS[reg[2]]-1;
+        i=LABELS[reg[2]]-1
+    REGISTERS['x0'] = 0
 
 def handle_bge(line):
     global i
-    reg =line.split(',');
+    reg =line.split(',')
     reg = list(map(str.strip, reg))
     if(REGISTERS[reg[0]] >= REGISTERS[reg[1]]):
-        i=LABELS[reg[2]]-1;
+        i=LABELS[reg[2]]-1
+    REGISTERS['x0'] = 0
 
 def handle_beqz(line):
     global i
-    reg =line.split(',');
+    reg =line.split(',')
     reg = list(map(str.strip, reg))
     if(REGISTERS[reg[0]] == 0):
-        i=LABELS[reg[1]]-1;
+        i=LABELS[reg[1]]-1
+    REGISTERS['x0'] = 0
+
 def handle_bnez(line):
     global i
-    reg =line.split(',');
+    reg =line.split(',')
     reg = list(map(str.strip, reg))
     if(REGISTERS[reg[0]] != 0):
-        i=LABELS[reg[1]]-1;
+        i=LABELS[reg[1]]-1
+    REGISTERS['x0'] = 0
+
 def handle_blez(line):
     global i
-    reg =line.split(',');
+    reg =line.split(',')
     reg = list(map(str.strip, reg))
     if(REGISTERS[reg[0]] <= 0):
-        i=LABELS[reg[1]]-1;
+        i=LABELS[reg[1]]-1
+    REGISTERS['x0'] = 0
 
 def handle_j(line):
     global i
     label = line.strip()
     i=LABELS[label]-1
+    REGISTERS['x0'] = 0
+
 def handle_mv(line):
-    reg =line.split(',');
+    reg =line.split(',')
     reg = list(map(str.strip, reg))
     REGISTERS[reg[0]]=REGISTERS[reg[1]]
+    REGISTERS['x0'] = 0
+
+def handle_jal(line):
+    global i
+    reg =line.split(',')
+    reg = list(map(str.strip, reg))
+    REGISTERS[reg[0]] = i    # now when this will be called, i will be given this value and will be incrememented in the main while loop
+    i=LABELS[reg[1]]-1
+    REGISTERS['x0'] = 0
+
+def handle_jalr(line):
+    global i
+    reg =line.split(',')
+    reg = list(map(str.strip, reg))
+    arg = reg[1]
+    offset=int(arg[0:arg.find('(')].strip())
+    arg=arg[arg.find('(')+1 : arg.find(')')]
+    REGISTERS[reg[0]] = i
+    i = REGISTERS[arg] + offset 
+    REGISTERS['x0'] = 0
 
 def callFunction(opcode,line):
     if(opcode == "add"):
@@ -228,6 +267,12 @@ def callFunction(opcode,line):
     if(opcode == "j"):
         handle_j(line)
         return
+    if(opcode == "jal"):
+        handle_jal(line)
+        return
+    if(opcode == "jalr"):
+        handle_jalr(line)
+        return
     if(opcode == "mv"):
         handle_mv(line)
         return
@@ -257,7 +302,8 @@ def find_labels():
         j+=1
 
 find_labels()
-
+i= LABELS["main"]
+print(i)
 while i < len(lines):
     line=lines[i].strip()
     if line=="":
@@ -291,3 +337,5 @@ print(REGISTERS)
 #   blez r1,LABEL
 #   j LABEL
 #   mv , rd, rs
+#   jal rd, label
+#   jalr x0, 0(x1)
