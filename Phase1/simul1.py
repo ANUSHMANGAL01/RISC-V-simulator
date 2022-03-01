@@ -12,9 +12,11 @@ i=0
 #  If the user enters any address of memory to refer it, we will divide it by four to get the correct address in the MEMORY array below
 # Also, in the memory, we will storing the numbers in decimal format only
 MEMORY = [0]*32768
-MEMORY[16384] = 7
-MEMORY[16385] = 10
-MEMORY[16386] = 5
+MEM_POINTER = 268500992  # MEMORY[0]
+# MEM_POINTER = 268500996 next. This will access MEMORY[1]
+# MEMORY[16384] = 7
+# MEMORY[16385] = 10
+# MEMORY[16386] = 5
 #  The above locations for MEMORY have been initialised just for testing purpose. They will not be there in the final version
 
 
@@ -218,6 +220,49 @@ def handle_jalr(line):
     i = REGISTERS[arg] + offset 
     REGISTERS['x0'] = 0
 
+def handle_andi(line):
+    reg =line.split(',')
+    reg = list(map(str.strip, reg))
+    const =0
+    if reg[2].find("0x")<0:   #means we did not find "0x"
+        const = int(reg[2])       
+    else:
+        const= hexadecimal_to_decimal(reg[2]) 
+    REGISTERS[reg[0]]=REGISTERS[reg[1]] & const
+    REGISTERS['x0'] = 0
+
+def handle_ori(line):
+    reg =line.split(',')
+    reg = list(map(str.strip, reg))
+    const =0
+    if reg[2].find("0x")<0:   #means we did not find "0x"
+        const = int(reg[2])       
+    else:
+        const= hexadecimal_to_decimal(reg[2]) 
+    REGISTERS[reg[0]]=REGISTERS[reg[1]] | const
+    REGISTERS['x0'] = 0
+def handle_or(line):
+    reg =line.split(',')
+    reg = list(map(str.strip, reg))
+    REGISTERS[reg[0]]=REGISTERS[reg[1]] | REGISTERS[reg[2]]
+    REGISTERS['x0'] = 0
+def handle_sll(line):
+    reg =line.split(',')
+    reg = list(map(str.strip, reg))
+    REGISTERS[reg[0]]=REGISTERS[reg[1]] << REGISTERS[reg[2]]
+    REGISTERS['x0'] = 0
+def handle_srl(line):
+    reg =line.split(',')
+    reg = list(map(str.strip, reg))
+    REGISTERS[reg[0]]=REGISTERS[reg[1]] >> REGISTERS[reg[2]]
+    REGISTERS['x0'] = 0
+def handle_la(line):
+    global i
+    reg =line.split(',')
+    reg = list(map(str.strip, reg))
+    REGISTERS[reg[0]] = LABELS[reg[1]]    # now when this will be called, i will be given this value and will be incrememented in the main while loop
+    REGISTERS['x0'] = 0
+
 def callFunction(opcode,line):
     if(opcode == "add"):
         handle_add(line)
@@ -276,14 +321,53 @@ def callFunction(opcode,line):
     if(opcode == "mv"):
         handle_mv(line)
         return
+    if(opcode == "andi"):
+        handle_andi(line)
+        return
+    if(opcode == "ori"):
+        handle_ori(line)
+        return
+    if(opcode == "or"):
+        handle_or(line)
+        return
+    if(opcode == "sll"):
+        handle_sll(line)
+        return
+    if(opcode == "srl"):
+        handle_srl(line)
+        return
+    if(opcode == "la"):
+        handle_la(line)
+        return
 
 def remove_side_comment(line):
     if(line.find('#')>0):
         line=line[0 : line.find('#')]
     return line
 
-def find_labels():
-    j=0
+#  only handling word right now
+def handle_data(line):
+    global MEM_POINTER
+    line = line.strip()
+    label=""
+    if(line.find(':')>0):
+        label=line[0:line.find(':')].strip()
+        line=line[line.find(':')+1:].strip()
+        LABELS[label] = MEM_POINTER
+    d_type = line[0: line.find(' ')]
+    line = line[line.find(" ")+1: ]
+    values = line.split(",")
+    if(d_type==".word"):
+        for value in values:
+            MEMORY[(MEM_POINTER-268500992)//4] = value
+            MEM_POINTER+=4
+    else:
+        pass       
+        
+    
+
+def find_labels(j):
+    
     while j < len(lines):
         line=lines[j].strip()
         if line=="":
@@ -291,6 +375,14 @@ def find_labels():
             continue
         if(line[0]=='#'):
             j+=1
+            continue
+        if(line[0]=='.' and line.find(".data") ==0):
+            if(line[5:].strip()==""):
+                handle_data(lines[j+1])
+                j+=2
+            else:
+                handle_data(line[5:])
+                j+=1
             continue
         label=""
         if(line.find(':')>0):
@@ -301,9 +393,12 @@ def find_labels():
             lines[j]=line
         j+=1
 
-find_labels()
+
+
+
+find_labels(0)
 i= LABELS["main"]
-print(i)
+# print(i)
 while i < len(lines):
     line=lines[i].strip()
     if line=="":
@@ -318,7 +413,7 @@ while i < len(lines):
     i+=1
 
 print(REGISTERS)
-
+print(MEMORY[0:10])
 
 #   add rd , r1 , r2
 #   addi rd , r1 , c
@@ -339,3 +434,7 @@ print(REGISTERS)
 #   mv , rd, rs
 #   jal rd, label
 #   jalr x0, 0(x1)
+#   andi rd, rs1, imm
+#   ori rd, rs1, imm
+#   or rd, rs1, rs2
+#   la rd, data_label

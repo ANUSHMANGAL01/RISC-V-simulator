@@ -1,3 +1,7 @@
+ .data 
+ARRAY: .word 3, 4 , 55 ,6, 56, 67
+
+
 # sample code
 
 # li x1, -36
@@ -29,16 +33,11 @@
 # add x5, x2, x4   
 
 
-func: 
-add x3, x4, x5
-addi x3, x3, 1
-jalr x0, 0(x1)
 main: 
 li x1, 5
-li x2, 5
-li x3, 6
-li x4, 7
-li x5, 8
-add x6, x1, x2
-jal x1, func
-add x7, x2, x3
+li x2, 10
+and x3, x1, x2   # 0
+or x4, x1, x2  # 15
+andi x5, x1, 6    # 4
+sll x6, x1, x2   # 5120
+la x10, ARRAY
