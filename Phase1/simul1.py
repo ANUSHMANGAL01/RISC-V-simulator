@@ -26,7 +26,7 @@ REGISTERS = {'x0': 0, 'x1': 0, 'x2': 0, 'x3': 0, 'x4': 0, 'x5': 0, 'x6': 0, 'x7'
              'x18': 0, 'x19': 0, 'x20': 0, 'x21': 0, 'x22': 0, 'x23': 0, 'x24': 0, 'x25': 0, 'x26': 0, 'x27': 0,
              'x28': 0, 'x29': 0, 'x30': 0, 'x31': '0'}
 ASSEMBLER_DIRECTIVES = {".text": 0 ,".data": 0}
-
+PROCESSED_LINES=[]
 
 def hexadecimal_to_decimal(hex_string):
     hex_string= hex_string[2:]   # removing the first two "0x"
@@ -393,9 +393,23 @@ def find_labels(j):
             lines[j]=line
         j+=1
 
+# Removing white spaces and comments
+def process_lines():
+    j=0
+    while j < len(lines):
+        line=lines[j].strip()
+        if line=="":
+            j+=1
+            continue;
+        if(line[0]=='#'):
+            j+=1
+            continue;
+        else:
+            PROCESSED_LINES.append(line)
+            j+=1
 
 
-
+process_lines()
 find_labels(0)
 i= LABELS["main"]
 # print(i)
