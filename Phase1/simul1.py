@@ -1,11 +1,16 @@
 from gettext import find
 
+# Global variables
+global i, MEMORY ,REGISTERS, LABELS, ASSEMBLER_DIRECTIVES,PROCESSED_LINES,lines
+
 # File Handling
 file = open("assemblyFile.asm", "r")
 lines = file.readlines();
 file.close()
 
-global i
+# String to store the path of the new file in case of a new file upload
+new_file_name = ""
+
 i=0
 # We will take the base address for user to store in memory to be 0x10010000 which is 268500992
 # Each element in the MEMORY array below if for four bytes. Since we are only dealing here with lw and sw commands, this won't cause any problem
@@ -27,6 +32,29 @@ REGISTERS = {'x0': 0, 'x1': 0, 'x2': 0, 'x3': 0, 'x4': 0, 'x5': 0, 'x6': 0, 'x7'
              'x28': 0, 'x29': 0, 'x30': 0, 'x31': '0'}
 ASSEMBLER_DIRECTIVES = {".text": 0 ,".data": 0}
 PROCESSED_LINES=[]
+
+def clear_reg():
+    global REGISTERS
+    REGISTERS = {'x0': 0, 'x1': 0, 'x2': 0, 'x3': 0, 'x4': 0, 'x5': 0, 'x6': 0, 'x7': 0, 'x8': 0,
+                'x9': 0, 'x10': 0, 'x11': 0, 'x12': 0, 'x13': 0, 'x14': 0, 'x15': 0, 'x16': 0, 'x17': 0,
+                'x18': 0, 'x19': 0, 'x20': 0, 'x21': 0, 'x22': 0, 'x23': 0, 'x24': 0, 'x25': 0, 'x26': 0, 'x27': 0,
+                'x28': 0, 'x29': 0, 'x30': 0, 'x31': '0'}
+
+def clear_mem():
+    global MEMORY
+    MEMORY = [0]*32768
+
+def clear_labels():
+    global LABELS
+    LABELS={}
+
+def clear_assembler_dir():
+    global ASSEMBLER_DIRECTIVES
+    ASSEMBLER_DIRECTIVES = {".text": 0 ,".data": 0}
+
+def clear_processed_lines():
+    global PROCESSED_LINES
+    PROCESSED_LINES=[]
 
 def hexadecimal_to_decimal(hex_string):
     hex_string= hex_string[2:]   # removing the first two "0x"
@@ -395,6 +423,7 @@ def find_labels(j):
 
 # Removing white spaces and comments
 def process_lines():
+    global PROCESSED_LINES
     j=0
     while j < len(lines):
         line=lines[j].strip()
@@ -409,25 +438,46 @@ def process_lines():
             j+=1
 
 
-process_lines()
-find_labels(0)
-i= LABELS["main"]
-# print(i)
-while i < len(lines):
-    line=lines[i].strip()
-    if line=="":
+def main():
+    global i,lines,REGISTERS,MEMORY,LABELS
+    process_lines()
+    find_labels(0)
+    i= LABELS["main"]
+    # print(i)
+    while i < len(lines):
+        line=lines[i].strip()
+        if line=="":
+            i+=1
+            continue
+        if line[0]=='#':
+            i+=1
+            continue
+        line = remove_side_comment(line)
+        opcode = line[0 : line.find(' ')].strip()
+        callFunction(opcode,line[line.find(' '):].strip())
         i+=1
-        continue
-    if line[0]=='#':
-        i+=1
-        continue
-    line = remove_side_comment(line)
-    opcode = line[0 : line.find(' ')].strip()
-    callFunction(opcode,line[line.find(' '):].strip())
-    i+=1
 
-print(REGISTERS)
-print(MEMORY[0:10])
+    print(REGISTERS)
+    print(MEMORY[0:10])
+
+main()
+
+# Function to re- run the code with a different file
+def re_run():
+    global i,lines,REGISTERS,MEMORY,LABELS,ASSEMBLER_DIRECTIVES
+    file = open(new_file_name, "r")
+    lines = file.readlines();
+    file.close()
+
+    i=0
+    clear_reg()
+    clear_mem()
+    clear_labels()
+    clear_assembler_dir()
+    clear_processed_lines()
+
+    main()
+
 
 #   add rd , r1 , r2
 #   addi rd , r1 , c

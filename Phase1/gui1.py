@@ -22,7 +22,14 @@ top_panel.pack(fill=BOTH,expand=1)
 simulator_body.add(top_panel);
 
 # Top panel functions
-def upload_file():pass
+# Function to upload a file and run simultaneously (could be broken down to run and upload seperately)
+def upload_file():
+    root.filename=filedialog.askopenfilename(initialdir="../RISC-V-simulator/Phase1",title="Select a file",filetypes=(("assembly files",".s"),("assembly files",".asm")))
+    simul1.new_file_name=root.filename
+    print(simul1.new_file_name)
+    simul1.re_run()
+    display_data()
+    display_registers()
 
 # Top panel buttons
 file_upload_button=Button(top_panel, text="File upload",font=("Roboto", 14),command=upload_file)
