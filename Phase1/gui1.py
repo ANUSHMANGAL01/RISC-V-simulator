@@ -1,8 +1,10 @@
+from asyncio.windows_events import NULL
 from tkinter import *
 from tkinter import ttk
 from ctypes import alignment, windll
 from tkinter import filedialog
 import os
+from tkinter import messagebox
 import simul1
 
 # Defining root
@@ -13,7 +15,7 @@ root.title("risc-v-simulator")
 windll.shcore.SetProcessDpiAwareness(1)
 
 # Simulator body panel
-simulator_body= PanedWindow(orient = VERTICAL,width=1300, height=600,bg="black");
+simulator_body= PanedWindow(orient = VERTICAL,width=1600, height=800,bg="black");
 simulator_body.pack(fill=BOTH,expand=1)
 
 # Top panel
@@ -22,12 +24,12 @@ top_panel.pack(fill=BOTH,expand=1)
 simulator_body.add(top_panel);
 
 # Top panel functions
-# Function to upload a file and run simultaneously (could be broken down to run and upload seperately)
+# Function to upload a file
 def upload_file():
     root.filename=filedialog.askopenfilename(initialdir="../RISC-V-simulator/Phase1",title="Select a file",filetypes=(("assembly files",".s"),("assembly files",".asm")))
     simul1.new_file_name=root.filename
-    print(simul1.new_file_name)
-    simul1.re_run()
+    clear_all()
+    simul1.load_code()
     display_data()
     display_registers()
 
@@ -83,8 +85,37 @@ reg_button.pack(side=LEFT)
 mem_button = Button(reg_mem_panel_title, text="MEMORY", height=1, font=("Roboto", 14), bg="white",command=lambda:toggle_button_colour(reg_button,mem_button))
 mem_button.pack(side=LEFT)
 
+# Functions for code panel
+# Function to clear the code panel and reset the memory and register values
+def clear_all():
+    simul1.clear_all()
+    code_text.delete("1.0","end")
+    reg_mem_text.delete("1.0", "end")
+    display_registers()
+
+# Function to run the code at once
+def run_at_once():
+    if(simul1.PROCESSED_LINES == []):
+         messagebox.showinfo("Blank File","Please upload an assembly file")
+    else:
+        simul1.run()
+        display_registers()
+
+# Function for step by step execution
+def run_step():
+    messagebox.showinfo("Work in progress","Sorry , we don't have that functionality yet .")
 # Buttons for code panel
-code_panel_label = Label(code_panel_title, text="USER TEXT", height=1, font=("Roboto", 14),pady=6.4).grid(row=0, column=0)
+code_panel_label = Button(code_panel_title, text="CODE TEXT", height=1, font=("Roboto", 14),activebackground='red',bg='white',state=DISABLED)
+code_panel_label.pack(side=LEFT)
+
+clear_code_button = Button(code_panel_title, text="CLEAR CODE", height=1, font=("Roboto", 14),command=clear_all,activebackground='red')
+clear_code_button.pack(side=LEFT)
+
+run_code_at_once_button = Button(code_panel_title, text="RUN AT ONCE", height=1, font=("Roboto", 14),command=run_at_once,activebackground='red')
+run_code_at_once_button.pack(side=LEFT)
+
+run_code_step_button = Button(code_panel_title, text="RUN STEPWISE", height=1, font=("Roboto", 14),activebackground='red',command=run_step)
+run_code_step_button.pack(side=LEFT)
 
 # Body Panel of Register and Memory and User
 reg_mem_body = PanedWindow(reg_mem_panel, bg="cyan")
@@ -93,6 +124,7 @@ code_body = PanedWindow(code_panel, bg="white")
 reg_mem_panel.add(reg_mem_body)
 code_panel.add(code_body)
 
+# Scrollbars
 scroll_reg = Scrollbar(reg_mem_body, orient="vertical")
 scroll_user = Scrollbar(code_body, orient="vertical")
 scroll_reg.pack(side=RIGHT, fill=Y)
@@ -117,7 +149,9 @@ status_panel.add(status)
 
 # Hnadling gui data
 code_text = Text(code_body, yscrollcommand = scroll_user.set,font=("Roboto", 14) )
+
 reg_mem_text = Text(reg_mem_body,yscrollcommand=scroll_reg.set,font=("Roboto", 14),bg="cyan")
+
 
 def display_registers():
     reg_mem_text.delete("1.0", "end")

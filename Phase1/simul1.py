@@ -9,7 +9,7 @@ lines = file.readlines();
 file.close()
 
 # String to store the path of the new file in case of a new file upload
-new_file_name = ""
+new_file_name = "assemblyFile.asm"
 
 i=0
 # We will take the base address for user to store in memory to be 0x10010000 which is 268500992
@@ -55,6 +55,16 @@ def clear_assembler_dir():
 def clear_processed_lines():
     global PROCESSED_LINES
     PROCESSED_LINES=[]
+
+def clear_all():
+    global i,lines
+    lines=[]
+    i=0
+    clear_reg()
+    clear_mem()
+    clear_labels()
+    clear_assembler_dir()
+    clear_processed_lines()
 
 def hexadecimal_to_decimal(hex_string):
     hex_string= hex_string[2:]   # removing the first two "0x"
@@ -438,9 +448,18 @@ def process_lines():
             j+=1
 
 
+def load_code():
+    global lines
+    file = open(new_file_name, "r")
+    lines = file.readlines();
+    file.close()
+    process_lines()
+
+# Lines are intially processed
+process_lines()
+
 def main():
     global i,lines,REGISTERS,MEMORY,LABELS
-    process_lines()
     find_labels(0)
     i= LABELS["main"]
     # print(i)
@@ -460,22 +479,16 @@ def main():
     print(REGISTERS)
     print(MEMORY[0:10])
 
-main()
+# main()
 
-# Function to re- run the code with a different file
-def re_run():
-    global i,lines,REGISTERS,MEMORY,LABELS,ASSEMBLER_DIRECTIVES
+# Function to run the code with a different file
+def run():
+    global lines
+    clear_all()
     file = open(new_file_name, "r")
     lines = file.readlines();
     file.close()
-
-    i=0
-    clear_reg()
-    clear_mem()
-    clear_labels()
-    clear_assembler_dir()
-    clear_processed_lines()
-
+    process_lines()
     main()
 
 
