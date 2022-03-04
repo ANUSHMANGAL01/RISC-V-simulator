@@ -29,7 +29,7 @@ LABELS = {}
 REGISTERS = {'x0': 0, 'x1': 0, 'x2': 0, 'x3': 0, 'x4': 0, 'x5': 0, 'x6': 0, 'x7': 0, 'x8': 0,
              'x9': 0, 'x10': 0, 'x11': 0, 'x12': 0, 'x13': 0, 'x14': 0, 'x15': 0, 'x16': 0, 'x17': 0,
              'x18': 0, 'x19': 0, 'x20': 0, 'x21': 0, 'x22': 0, 'x23': 0, 'x24': 0, 'x25': 0, 'x26': 0, 'x27': 0,
-             'x28': 0, 'x29': 0, 'x30': 0, 'x31': '0'}
+             'x28': 0, 'x29': 0, 'x30': 0, 'x31': 0}
 ASSEMBLER_DIRECTIVES = {".text": 0 ,".data": 0}
 PROCESSED_LINES=[]
 
@@ -39,6 +39,17 @@ def clear_reg():
                 'x9': 0, 'x10': 0, 'x11': 0, 'x12': 0, 'x13': 0, 'x14': 0, 'x15': 0, 'x16': 0, 'x17': 0,
                 'x18': 0, 'x19': 0, 'x20': 0, 'x21': 0, 'x22': 0, 'x23': 0, 'x24': 0, 'x25': 0, 'x26': 0, 'x27': 0,
                 'x28': 0, 'x29': 0, 'x30': 0, 'x31': '0'}
+
+class Error(Exception):
+    """Base class for other exceptions"""
+    pass
+
+class SyntaxError(Error):
+    """Raised when there is some syntax error in the input code"""
+    pass
+class LogicalError(Error):
+    """Raised when there is some logical error in the input code"""
+    pass
 
 def clear_mem():
     global MEMORY
@@ -77,7 +88,6 @@ def hexadecimal_to_decimal(hex_string):
     else:
         return int(res, 2)    
 
-
 def get_complement(binary_string):
     i=len(binary_string) - 1
     new_string=""
@@ -98,17 +108,38 @@ def get_complement(binary_string):
         i-=1
     return new_string
 
-
+def isConstantAndNeededLength(word, length):
+    if(len(word)==0):
+        return False
+    if(word[0]=='-' or word[0]=='+'):
+        word = word[1:]
+        if(word[1]=='x' or word[1]=='X'):
+            return False   #because hexadecimal numbers do not need a negative sign
+    if(len(word)>1 and (word[1]=='x' or word[1]=='X')):
+        if(len(word)!=length):
+            return False
+        word = word[0] + word[2:]
+    if word.isnumeric():
+        return True
+    else:
+        return False
+    
 def handle_add(line):
+    global i
     reg =line.split(',')
     reg = list(map(str.strip, reg))
+    if len(reg)!=3 or not (reg[0] in REGISTERS and reg[1] in REGISTERS and reg[2] in REGISTERS):
+        raise SyntaxError('Syntax error found in line %d. The register name is wrong.' %i)
     REGISTERS[reg[0]]=REGISTERS[reg[1]]+REGISTERS[reg[2]]
     REGISTERS['x0'] = 0
 
 def handle_addi(line):
+    global i
     reg =line.split(',')
     reg = list(map(str.strip, reg))
     const =0
+    if len(reg)!=3 or not (reg[0] in REGISTERS and reg[1] in REGISTERS and isConstantAndNeededLength(reg[2], 10)):
+        raise SyntaxError('Syntax error found in line %d. The register name is wrong or the constant value is wrong.' %i)
     if reg[2].find("0x")<0:   #means we did not find "0x"
         const = int(reg[2])       
     else:
@@ -117,14 +148,20 @@ def handle_addi(line):
     REGISTERS['x0'] = 0
 
 def handle_sub(line):
+    global i
     reg =line.split(',')
     reg = list(map(str.strip, reg))
+    if len(reg)!=3 or not (reg[0] in REGISTERS and reg[1] in REGISTERS and reg[2] in REGISTERS):
+        raise SyntaxError('Syntax error found in line %d. The register name is wrong.' %i)
     REGISTERS[reg[0]]=REGISTERS[reg[1]]-REGISTERS[reg[2]]
     REGISTERS['x0'] = 0
 
 def handle_slt(line):
+    global i
     reg =line.split(',')
     reg = list(map(str.strip, reg))
+    if len(reg)!=3 or not (reg[0] in REGISTERS and reg[1] in REGISTERS and reg[2] in REGISTERS):
+        raise SyntaxError('Syntax error found in line %d. The register name is wrong.' %i)
     if(REGISTERS[reg[1]]<REGISTERS[reg[2]]):
         REGISTERS[reg[0]]=1
     else:
@@ -132,18 +169,25 @@ def handle_slt(line):
     REGISTERS['x0'] = 0
 
 def handle_lw(line):
+    global i
     reg =line.split(',')
     reg = list(map(str.strip, reg))
     arg = reg[1]
-    offset=int(arg[0:arg.find('(')].strip())
+    offset=(arg[0:arg.find('(')].strip())
     arg=arg[arg.find('(')+1 : arg.find(')')]
+    if len(reg)!=2 or not (reg[0] in REGISTERS and arg in REGISTERS and isConstantAndNeededLength(offset, 0)):
+        raise SyntaxError('Syntax error found in line %d.' %i)
+    offset = int(offset)
     ma = REGISTERS[arg]+offset
-    REGISTERS[reg[0]]=MEMORY[(ma-268500992)//4] 
+    REGISTERS[reg[0]]=MEMORY[(ma-268500992)//4]
     REGISTERS['x0'] = 0
 
 def handle_li(line):
+    global i
     reg =line.split(',')
     reg = list(map(str.strip, reg))
+    if len(reg)!=2 or not (reg[0] in REGISTERS and isConstantAndNeededLength(reg[1], 10)):
+        raise SyntaxError('Syntax error found in line %d. The register name is wrong or the constant value is wrong.' %i)
     if reg[1].find("0x")<0:   #means we did not find "0x"
         const = int(reg[1])
         REGISTERS[reg[0]]=const
@@ -152,8 +196,11 @@ def handle_li(line):
     REGISTERS['x0'] = 0
 
 def handle_lui(line):
+    global i
     reg =line.split(',')
     reg = list(map(str.strip, reg))
+    if len(reg)!=2 or not (reg[0] in REGISTERS and isConstantAndNeededLength(reg[1], 7)):
+        raise SyntaxError('Syntax error found in line %d. The register name is wrong or the constant value is wrong.' %i)
     if reg[1].find("0x")<0:   #means we did not find "0x"
         const = int(reg[1])
         REGISTERS[reg[0]]=const*16*16*16    # Because we have to store it in upper half
@@ -162,11 +209,15 @@ def handle_lui(line):
     REGISTERS['x0'] = 0
 
 def handle_sw(line):
+    global i
     reg =line.split(',')
     reg = list(map(str.strip, reg))
     arg = reg[1]
-    offset=int(arg[0:arg.find('(')].strip())
+    offset=(arg[0:arg.find('(')].strip())
     arg=arg[arg.find('(')+1 : arg.find(')')]
+    if len(reg)!=2 or not (reg[0] in REGISTERS and arg in REGISTERS and isConstantAndNeededLength(offset, 0)):
+        raise SyntaxError('Syntax error found in line %d.' %i)
+    offset = int(offset)
     ma = REGISTERS[arg]+offset;
     MEMORY[(ma-268500992)//4]=REGISTERS[reg[0]]
     REGISTERS['x0'] = 0
@@ -175,6 +226,8 @@ def handle_bne(line):
     global i
     reg =line.split(',')
     reg = list(map(str.strip, reg))
+    if len(reg)!=3 or not (reg[0] in REGISTERS and reg[1] in REGISTERS and reg[2] in LABELS):
+        raise SyntaxError('Syntax error found in line %d. The register or the label name is wrong.' %i)
     if(REGISTERS[reg[0]]!=REGISTERS[reg[1]]):
         i=LABELS[reg[2]]-1
     REGISTERS['x0'] = 0
@@ -183,6 +236,8 @@ def handle_beq(line):
     global i
     reg =line.split(',')
     reg = list(map(str.strip, reg))
+    if len(reg)!=3 or not (reg[0] in REGISTERS and reg[1] in REGISTERS and reg[2] in LABELS):
+        raise SyntaxError('Syntax error found in line %d. The register or the label name is wrong.' %i)
     if(REGISTERS[reg[0]]==REGISTERS[reg[1]]):
         i=LABELS[reg[2]]-1
     REGISTERS['x0'] = 0
@@ -191,6 +246,8 @@ def handle_blt(line):
     global i
     reg =line.split(',')
     reg = list(map(str.strip, reg))
+    if len(reg)!=3 or not (reg[0] in REGISTERS and reg[1] in REGISTERS and reg[2] in LABELS):
+        raise SyntaxError('Syntax error found in line %d. The register or the label name is wrong.' %i)
     if(REGISTERS[reg[0]] < REGISTERS[reg[1]]):
         i=LABELS[reg[2]]-1
     REGISTERS['x0'] = 0
@@ -199,6 +256,8 @@ def handle_bge(line):
     global i
     reg =line.split(',')
     reg = list(map(str.strip, reg))
+    if len(reg)!=3 or not (reg[0] in REGISTERS and reg[1] in REGISTERS and reg[2] in LABELS):
+        raise SyntaxError('Syntax error found in line %d. The register or the label name is wrong.' %i)
     if(REGISTERS[reg[0]] >= REGISTERS[reg[1]]):
         i=LABELS[reg[2]]-1
     REGISTERS['x0'] = 0
@@ -207,6 +266,8 @@ def handle_beqz(line):
     global i
     reg =line.split(',')
     reg = list(map(str.strip, reg))
+    if len(reg)!=2 or not (reg[0] in REGISTERS and reg[1] in LABELS):
+        raise SyntaxError('Syntax error found in line %d. The register or the label name is wrong.' %i)
     if(REGISTERS[reg[0]] == 0):
         i=LABELS[reg[1]]-1
     REGISTERS['x0'] = 0
@@ -215,6 +276,8 @@ def handle_bnez(line):
     global i
     reg =line.split(',')
     reg = list(map(str.strip, reg))
+    if len(reg)!=2 or not (reg[0] in REGISTERS and reg[1] in LABELS):
+        raise SyntaxError('Syntax error found in line %d. The register or the label name is wrong.' %i)
     if(REGISTERS[reg[0]] != 0):
         i=LABELS[reg[1]]-1
     REGISTERS['x0'] = 0
@@ -223,6 +286,8 @@ def handle_blez(line):
     global i
     reg =line.split(',')
     reg = list(map(str.strip, reg))
+    if len(reg)!=2 or not (reg[0] in REGISTERS and reg[1] in LABELS):
+        raise SyntaxError('Syntax error found in line %d. The register or the label name is wrong.' %i)
     if(REGISTERS[reg[0]] <= 0):
         i=LABELS[reg[1]]-1
     REGISTERS['x0'] = 0
@@ -230,12 +295,17 @@ def handle_blez(line):
 def handle_j(line):
     global i
     label = line.strip()
+    if not (label in LABELS):
+        raise LogicalError('Logical error found in line %d. The label name is wrong.' %i)
     i=LABELS[label]-1
     REGISTERS['x0'] = 0
 
 def handle_mv(line):
+    global i
     reg =line.split(',')
     reg = list(map(str.strip, reg))
+    if len(reg)!=2 or not (reg[0] in REGISTERS and reg[1] in REGISTERS):
+        raise SyntaxError('Syntax error found in line %d. The register name is wrong.' %i)
     REGISTERS[reg[0]]=REGISTERS[reg[1]]
     REGISTERS['x0'] = 0
 
@@ -243,6 +313,8 @@ def handle_jal(line):
     global i
     reg =line.split(',')
     reg = list(map(str.strip, reg))
+    if len(reg)!=2 or not (reg[0] in REGISTERS and reg[1] in LABELS):
+        raise SyntaxError('Syntax error found in line %d. The register or the label name is wrong.' %i)
     REGISTERS[reg[0]] = i    # now when this will be called, i will be given this value and will be incrememented in the main while loop
     i=LABELS[reg[1]]-1
     REGISTERS['x0'] = 0
@@ -252,16 +324,22 @@ def handle_jalr(line):
     reg =line.split(',')
     reg = list(map(str.strip, reg))
     arg = reg[1]
-    offset=int(arg[0:arg.find('(')].strip())
+    offset=(arg[0:arg.find('(')].strip())
     arg=arg[arg.find('(')+1 : arg.find(')')]
+    if len(reg)!=2 or not (reg[0] in REGISTERS and arg in REGISTERS and isConstantAndNeededLength(offset, 0)):
+        raise SyntaxError('Syntax error found in line %d.' %i)
+    offset = int(offset)
     REGISTERS[reg[0]] = i
     i = REGISTERS[arg] + offset 
     REGISTERS['x0'] = 0
 
 def handle_andi(line):
+    global i
     reg =line.split(',')
     reg = list(map(str.strip, reg))
     const =0
+    if len(reg)!=3 or not (reg[0] in REGISTERS and reg[1] in REGISTERS and isConstantAndNeededLength(reg[2], 10)):
+        raise SyntaxError('Syntax error found in line %d. The register name is wrong or the constant value is wrong.' %i)
     if reg[2].find("0x")<0:   #means we did not find "0x"
         const = int(reg[2])       
     else:
@@ -270,9 +348,12 @@ def handle_andi(line):
     REGISTERS['x0'] = 0
 
 def handle_ori(line):
+    global i
     reg =line.split(',')
     reg = list(map(str.strip, reg))
     const =0
+    if len(reg)!=3 or not (reg[0] in REGISTERS and reg[1] in REGISTERS and isConstantAndNeededLength(reg[2], 10)):
+        raise SyntaxError('Syntax error found in line %d. The register name is wrong or the constant value is wrong.' %i)
     if reg[2].find("0x")<0:   #means we did not find "0x"
         const = int(reg[2])       
     else:
@@ -280,28 +361,48 @@ def handle_ori(line):
     REGISTERS[reg[0]]=REGISTERS[reg[1]] | const
     REGISTERS['x0'] = 0
 def handle_or(line):
+    global i
     reg =line.split(',')
     reg = list(map(str.strip, reg))
+    if len(reg)!=3 or not (reg[0] in REGISTERS and reg[1] in REGISTERS and reg[2] in REGISTERS):
+        raise SyntaxError('Syntax error found in line %d. The register name is wrong.' %i)
     REGISTERS[reg[0]]=REGISTERS[reg[1]] | REGISTERS[reg[2]]
     REGISTERS['x0'] = 0
-def handle_sll(line):
+def handle_and(line):
+    global i
     reg =line.split(',')
     reg = list(map(str.strip, reg))
+    if len(reg)!=3 or not (reg[0] in REGISTERS and reg[1] in REGISTERS and reg[2] in REGISTERS):
+        raise SyntaxError('Syntax error found in line %d. The register name is wrong.' %i)
+    REGISTERS[reg[0]]=REGISTERS[reg[1]] & REGISTERS[reg[2]]
+    REGISTERS['x0'] = 0
+def handle_sll(line):
+    global i
+    reg =line.split(',')
+    reg = list(map(str.strip, reg))
+    if len(reg)!=3 or not (reg[0] in REGISTERS and reg[1] in REGISTERS and reg[2] in REGISTERS):
+        raise SyntaxError('Syntax error found in line %d. The register name is wrong.' %i)
     REGISTERS[reg[0]]=REGISTERS[reg[1]] << REGISTERS[reg[2]]
     REGISTERS['x0'] = 0
 def handle_srl(line):
+    global i
     reg =line.split(',')
     reg = list(map(str.strip, reg))
+    if len(reg)!=3 or not (reg[0] in REGISTERS and reg[1] in REGISTERS and reg[2] in REGISTERS):
+        raise SyntaxError('Syntax error found in line %d. The register name is wrong.' %i)
     REGISTERS[reg[0]]=REGISTERS[reg[1]] >> REGISTERS[reg[2]]
     REGISTERS['x0'] = 0
 def handle_la(line):
     global i
     reg =line.split(',')
     reg = list(map(str.strip, reg))
+    if len(reg)!=2 or not (reg[0] in REGISTERS and reg[1] in LABELS):
+        raise SyntaxError('Syntax error found in line %d. The register or the label name is wrong.' %i)
     REGISTERS[reg[0]] = LABELS[reg[1]]    # now when this will be called, i will be given this value and will be incrememented in the main while loop
     REGISTERS['x0'] = 0
 
 def callFunction(opcode,line):
+    global i
     if(opcode == "add"):
         handle_add(line)
         return
@@ -368,6 +469,9 @@ def callFunction(opcode,line):
     if(opcode == "or"):
         handle_or(line)
         return
+    if(opcode == "and"):
+        handle_and(line)
+        return
     if(opcode == "sll"):
         handle_sll(line)
         return
@@ -377,6 +481,8 @@ def callFunction(opcode,line):
     if(opcode == "la"):
         handle_la(line)
         return
+    
+    raise SyntaxError('Syntax error found in line %d. The opcode name is wrong.' %i)
 
 def remove_side_comment(line):
     if(line.find('#')>0):
@@ -397,7 +503,7 @@ def handle_data(line):
     values = line.split(",")
     if(d_type==".word"):
         for value in values:
-            MEMORY[(MEM_POINTER-268500992)//4] = value
+            MEMORY[(MEM_POINTER-268500992)//4] = int(value)
             MEM_POINTER+=4
     else:
         pass       
@@ -491,7 +597,8 @@ def run():
     process_lines()
     main()
 
-
+if __name__ =="__main__":
+    main()
 #   add rd , r1 , r2
 #   addi rd , r1 , c
 #   sub rd , r1 , r2 
@@ -514,4 +621,7 @@ def run():
 #   andi rd, rs1, imm
 #   ori rd, rs1, imm
 #   or rd, rs1, rs2
+#   and rd, rs1, rs2
+#   sll rd , r1 , r2
+#   srl rd , r1 , r2
 #   la rd, data_label

@@ -34,10 +34,11 @@ ARRAY: .word 3, 4 , 55 ,6, 56, 67
 
 
 main: 
+la x10, ARRAY
 li x1, 5
+lw x1, 0(x10)
 li x2, 10
 and x3, x1, x2   # 0
 or x4, x1, x2  # 15
 andi x5, x1, 6    # 4
 sll x6, x1, x2   # 5120
-la x10, ARRAY
