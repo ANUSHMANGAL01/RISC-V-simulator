@@ -4,12 +4,12 @@ from gettext import find
 global i, MEMORY ,REGISTERS, LABELS, ASSEMBLER_DIRECTIVES,PROCESSED_LINES,lines
 
 # File Handling
-file = open("assemblyFile.asm", "r")
+file = open("bubbleSort.asm", "r")
 lines = file.readlines();
 file.close()
 
 # String to store the path of the new file in case of a new file upload
-new_file_name = "assemblyFile.asm"
+new_file_name = "bubbleSort.asm"
 
 i=0
 # We will take the base address for user to store in memory to be 0x10010000 which is 268500992
@@ -114,16 +114,19 @@ def isConstantAndNeededLength(word, length):
         return False
     if(word[0]=='-' or word[0]=='+'):
         word = word[1:]
-        if(word[1]=='x' or word[1]=='X'):
-            return False   #because hexadecimal numbers do not need a negative sign
-    if(len(word)>1 and (word[1]=='x' or word[1]=='X')):
-        if(len(word)!=length):
-            return False
-        word = word[0] + word[2:]
-        for character in word:
-            if not ((character>='0' and character<='9') or (character>='a' and character<='f') or (character>='A' and character<='F')):
+        if word.isnumeric():
+            return True
+        else:
+            return False   # hexadecimal numbers don't need a negative sign
+    if len(word)>1:
+        if((word[1]=='x' or word[1]=='X')):
+            if(len(word)!=length):
                 return False
-        return True
+            word = word[0] + word[2:]
+            for character in word:
+                if not ((character>='0' and character<='9') or (character>='a' and character<='f') or (character>='A' and character<='F')):
+                    return False
+            return True
     if word.isnumeric():
         return True
     else:
@@ -254,6 +257,15 @@ def handle_blt(line):
     if len(reg)!=3 or not (reg[0] in REGISTERS and reg[1] in REGISTERS and reg[2] in LABELS):
         raise SyntaxError('Syntax error found in line %d. The register or the label name is wrong.' %i)
     if(REGISTERS[reg[0]] < REGISTERS[reg[1]]):
+        i=LABELS[reg[2]]-1
+    REGISTERS['x0'] = 0
+def handle_bgt(line):
+    global i
+    reg =line.split(',')
+    reg = list(map(str.strip, reg))
+    if len(reg)!=3 or not (reg[0] in REGISTERS and reg[1] in REGISTERS and reg[2] in LABELS):
+        raise SyntaxError('Syntax error found in line %d. The register or the label name is wrong.' %i)
+    if(REGISTERS[reg[0]] > REGISTERS[reg[1]]):
         i=LABELS[reg[2]]-1
     REGISTERS['x0'] = 0
 
@@ -441,6 +453,9 @@ def callFunction(opcode,line):
     if(opcode == "blt"):
         handle_blt(line)
         return
+    if(opcode == "bgt"):
+        handle_bgt(line)
+        return
     if(opcode == "bge"):
         handle_bge(line)
         return
@@ -487,7 +502,7 @@ def callFunction(opcode,line):
         handle_la(line)
         return
     
-    raise SyntaxError('Syntax error found in line %d. The opcode name is wrong.' %i)
+    raise SyntaxError('Syntax error found in line %d. The opcode name is wrong. It is ' %i)
 
 def remove_side_comment(line):
     if(line.find('#')>0):
@@ -646,6 +661,7 @@ if __name__ =="__main__":
 #   beq r1,r2,LABEL
 #   blt r1,r2,LABEL
 #   bgt r1,r2,LABEL
+#   bge r1,r2,LABEL
 #   beqz r1,LABEL
 #   bnez r1,LABEL
 #   blez r1,LABEL
