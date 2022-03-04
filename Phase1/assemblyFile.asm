@@ -4,11 +4,16 @@ ARRAY_LENGTH: .word 6
 .word 5555
 
 .text
-
+.global add_fun
 # sample code
+
+add_fun:
+addi x1, x1, 36
+jalr x0, 0(x31)
 
 main: 
 li x1, -36
+jal x31, add_fun
 addi x2, x1, 0x0000002f
 lui x5, 0x11000
 mv x4, x5
