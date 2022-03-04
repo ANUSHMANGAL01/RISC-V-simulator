@@ -1,6 +1,9 @@
  .data 
 ARRAY: .word 3, 4 , 55 ,6, 56, 67
+ARRAY_LENGTH: .word 6
+.word 5555
 
+.text
 
 # sample code
 

@@ -495,25 +495,36 @@ def remove_side_comment(line):
     return line
 
 #  only handling word right now
-def handle_data(line):
-    global MEM_POINTER
-    line = line.strip()
-    label=""
-    if(line.find(':')>0):
-        label=line[0:line.find(':')].strip()
-        line=line[line.find(':')+1:].strip()
-        LABELS[label] = MEM_POINTER
-    d_type = line[0: line.find(' ')]
-    line = line[line.find(" ")+1: ]
-    values = line.split(",")
-    if(d_type==".word"):
-        for value in values:
-            MEMORY[(MEM_POINTER-268500992)//4] = int(value)
-            MEM_POINTER+=4
-    else:
-        pass       
-        
-    
+def handle_data(line, j):
+    global MEM_POINTER, lines, LABELS
+    while not line[0]=='.':
+        line = line.strip()
+        label=""
+        if(line.find(':')>0):
+            label=line[0:line.find(':')].strip()
+            line=line[line.find(':')+1:].strip()
+            LABELS[label] = MEM_POINTER
+        d_type = line[0: line.find(' ')]
+        line = line[line.find(" ")+1: ]
+        values = line.split(",")
+        if(d_type==".word"):
+            for value in values:
+                MEMORY[(MEM_POINTER-268500992)//4] = int(value)
+                MEM_POINTER+=4
+        else:
+            pass  
+        j+=1  
+        line=lines[j]
+    while(line[0]=='.'):
+        if(line.find(".word")==0):
+            line = line[line.find(" ")+1: ]
+            values = line.split(",")
+            for value in values:
+                MEMORY[(MEM_POINTER-268500992)//4] = int(value)
+                MEM_POINTER+=4
+        j+=1
+        line=lines[j]
+    return j
 
 def find_labels(j):
     
@@ -527,11 +538,11 @@ def find_labels(j):
             continue
         if(line[0]=='.' and line.find(".data") ==0):
             if(line[5:].strip()==""):
-                handle_data(lines[j+1])
-                j+=2
+                j = handle_data(lines[j+1], j+1)
+                
             else:
-                handle_data(line[5:])
-                j+=1
+                j = handle_data(line[5:], j)
+                
             continue
         label=""
         if(line.find(':')>0):
