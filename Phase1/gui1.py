@@ -11,6 +11,18 @@ import simul1
 root = Tk()
 root.title("risc-v-simulator")
 
+# Prompts
+def info_prompt(msg1,msg2):
+    messagebox.showinfo(msg1,msg2)
+
+# Status messages
+def status_display(str1):
+    status_text.configure(state='normal')
+    status_text.insert(END, str1 + "\n")
+    status_text.pack(side=TOP, fill=X)
+    scroll_status.config(command=code_text.yview)
+    status_text.configure(state='disabled')
+
 # Enabling dpi scaling
 windll.shcore.SetProcessDpiAwareness(1)
 
@@ -23,6 +35,21 @@ top_panel = PanedWindow(simulator_body,bd=1,relief="raised",bg="white");
 top_panel.pack(fill=BOTH,expand=1)
 simulator_body.add(top_panel);
 
+# Button animations
+# Hover
+def custom_button(my_panel,text,bgcolor,fgcolor,cmd):
+    def on_enter(e):
+        my_button['background']=bgcolor
+        my_button['foreground']=fgcolor
+
+    def on_leave(e):
+        my_button['background']=fgcolor
+        my_button['foreground']=bgcolor
+
+    my_button=Button(my_panel,width=10,height=1,font=("Roboto", 14),text=text,fg=bgcolor,bg=fgcolor,border=0,activeforeground=fgcolor,activebackground=bgcolor,command=cmd)
+    my_button.bind("<Enter>",on_enter)
+    my_button.bind("<Leave>",on_leave)
+    return my_button
 # Top panel functions
 # Function to upload a file
 def upload_file():
@@ -34,20 +61,20 @@ def upload_file():
     display_registers()
 
 # Top panel buttons
-file_upload_button=Button(top_panel, text="File upload",font=("Roboto", 14),command=upload_file)
+file_upload_button=custom_button(top_panel,"Upload File","cyan","black", upload_file)
 file_upload_button.pack(side=LEFT, pady=2)
 
-help_button=Button(top_panel, text="Help",font=("Roboto", 14))
+help_button=custom_button(top_panel,"Help","cyan","black",lambda:info_prompt("Work in progress","Sorry , we don't have that functionality yet."))
 help_button.pack(side=LEFT, padx=15, pady=2)
 
-quit_button = Button(top_panel,text=" Exit ",font=("Roboto", 14),command =root.quit)
+quit_button = custom_button(top_panel,"Exit","cyan","black", root.quit)
 quit_button.pack(side=RIGHT, padx=15, pady=2)
 
 # Title panel
 title_panel=PanedWindow(simulator_body, bd=1, relief="raised", bg="black")
 simulator_body.add(title_panel);
 
-title_label = Label(title_panel, text="RISC-V SIMULATOR", font=("Roboto", 20))
+title_label = Label(title_panel, text="RISC-V SIMULATOR", font=("Roboto", 25,'bold'))
 title_panel.add(title_label)
 
 # Body Panel
@@ -69,20 +96,21 @@ reg_mem_panel.add(reg_mem_panel_title)
 code_panel.add(code_panel_title)
 
 # Toggle function -> Toggles the view of memory and registers on click
-def toggle_button_colour(but_1,but_2):
-    but_1_colour = but_1.cget('bg')
-    but_1.configure(bg=but_2.cget('bg'))
-    but_2.configure(bg=but_1_colour)
-    if(but_1.cget('bg') == "cyan"):
-        display_registers()
-    else:
+def change_button_colour(but_1,but_2,status):
+    if(but_1.cget('bg') == "cyan" and status==1):
+        but_1.configure(bg="white")
+        but_2.configure(bg="cyan")
         display_memory()
+    elif(but_2.cget('bg') == "cyan" and status==0):
+        but_2.configure(bg="white")
+        but_1.configure(bg="cyan")
+        display_registers()
 
 # Buttons for register-memory panel
-reg_button = Button(reg_mem_panel_title, text="REGISTERS", height=1, font=("Roboto", 14),bg="cyan",command =lambda: toggle_button_colour(reg_button,mem_button))
+reg_button = Button(reg_mem_panel_title, text="REGISTERS", height=1, font=("Roboto", 14),bg="cyan",command =lambda: change_button_colour(reg_button,mem_button,0))
 reg_button.pack(side=LEFT)
 
-mem_button = Button(reg_mem_panel_title, text="MEMORY", height=1, font=("Roboto", 14), bg="white",command=lambda:toggle_button_colour(reg_button,mem_button))
+mem_button = Button(reg_mem_panel_title, text="MEMORY", height=1, font=("Roboto", 14), bg="white",command=lambda:change_button_colour(reg_button,mem_button,1))
 mem_button.pack(side=LEFT)
 
 # Functions for code panel
@@ -92,20 +120,24 @@ def clear_all():
     code_text.delete("1.0","end")
     reg_mem_text.delete("1.0", "end")
     display_registers()
+    status_display("Registers and memory cleared")
 
 # Function to run the code at once
 def run_at_once():
     if(simul1.PROCESSED_LINES == []):
-         messagebox.showinfo("Blank File","Please upload an assembly file")
+         info_prompt("Blank File","Please upload an assembly file")
     else:
         simul1.run()
-        display_registers()
+        if(reg_button.cget('bg')=='cyan'):
+            display_registers()
+        else:
+            display_memory()
 
 # Function for step by step execution
 def run_step():
-    messagebox.showinfo("Work in progress","Sorry , we don't have that functionality yet .")
+    info_prompt("Work in progress","Sorry , we don't have that functionality yet .")
 # Buttons for code panel
-code_panel_label = Button(code_panel_title, text="CODE TEXT", height=1, font=("Roboto", 14),activebackground='red',bg='white',state=DISABLED)
+code_panel_label = Button(code_panel_title, text="CODE TEXT", height=1, font=("Roboto", 14),bg='white')
 code_panel_label.pack(side=LEFT)
 
 clear_code_button = Button(code_panel_title, text="CLEAR CODE", height=1, font=("Roboto", 14),command=clear_all,activebackground='red')
@@ -126,9 +158,11 @@ code_panel.add(code_body)
 
 # Scrollbars
 scroll_reg = Scrollbar(reg_mem_body, orient="vertical")
-scroll_user = Scrollbar(code_body, orient="vertical")
+scroll_code = Scrollbar(code_body, orient="vertical")
+
 scroll_reg.pack(side=RIGHT, fill=Y)
-scroll_user.pack(side=RIGHT, fill=Y)
+scroll_code.pack(side=RIGHT, fill=Y)
+
 
 # Console Panel
 # console_panel = PanedWindow(code_panel, orient="vertical", relief="raised", bg="white")
@@ -141,42 +175,52 @@ scroll_user.pack(side=RIGHT, fill=Y)
 # console_panel.add(console)
 
 # Status Panel -> Return status of program (whether it has finshed or there are some errors
-status_panel = PanedWindow(simulator_body,orient=VERTICAL, relief="raised", bg="white")
+border_space = Label(simulator_body,relief='raised',bg="white",height=1)
+simulator_body.add(border_space)
+
+status_panel = PanedWindow(simulator_body,orient=VERTICAL, relief="raised", bg="black",bd=0)
 simulator_body.add(status_panel)
 
-status = Label(status_panel, font=("Roboto", 14), fg="green")
-status_panel.add(status)
+scroll_status = Scrollbar(status_panel, orient="vertical")
+scroll_status.pack(side=LEFT,fill=Y)
 
-# Hnadling gui data
-code_text = Text(code_body, yscrollcommand = scroll_user.set,font=("Roboto", 14) )
+# Handling gui data
+code_text = Text(code_body, yscrollcommand = scroll_code.set,font=("Roboto", 14) )
 
 reg_mem_text = Text(reg_mem_body,yscrollcommand=scroll_reg.set,font=("Roboto", 14),bg="cyan")
 
+status_text = Text(status_panel,yscrollcommand=scroll_reg.set,font=("Roboto", 14),bg="black",fg='cyan')
 
 def display_registers():
+    reg_mem_text.configure(state='normal')
     reg_mem_text.delete("1.0", "end")
     for i in simul1.REGISTERS:
             reg_mem_text.insert(END, str(i) + " = " + str(simul1.REGISTERS[i])+ "\n")
     reg_mem_text.pack(side=TOP, fill=X)
-    scroll_user.config(command=reg_mem_text.yview)
+    scroll_code.config(command=reg_mem_text.yview)
+    reg_mem_text.configure(state='disabled')
 
 def display_memory():
+    reg_mem_text.configure(state='normal')
     reg_mem_text.delete("1.0", "end")
     j=0
     for i in simul1.MEMORY:
             reg_mem_text.insert(END, str(j) + " = " + str(i)+ "\n")
             j+=1
     reg_mem_text.pack(side=TOP, fill=X)
-    scroll_user.config(command=reg_mem_text.yview)
+    scroll_code.config(command=reg_mem_text.yview)
+    reg_mem_text.configure(state='disabled')
 
 def display_data():
+    code_text.configure(state='normal')
     code_text.delete("1.0","end")
     j=1
     for i in simul1.PROCESSED_LINES:
             code_text.insert(END, str(j) + " : " + str(i)+"\n")
             j+=1
     code_text.pack(side=TOP, fill=X)
-    scroll_user.config(command=code_text.yview)
+    scroll_code.config(command=code_text.yview)
+    code_text.configure(state='disabled')
 
 display_data()
 display_registers()
