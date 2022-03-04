@@ -1,15 +1,22 @@
 from asyncio.windows_events import NULL
+from distutils.log import info
 from tkinter import *
 from tkinter import ttk
 from ctypes import alignment, windll
 from tkinter import filedialog
 import os
 from tkinter import messagebox
+
+from pyparsing import line
 import simul1
 
 # Defining root
 root = Tk()
 root.title("risc-v-simulator")
+
+global line_number, ran_before
+ran_before = False   # used in the step by step running function
+
 
 # Prompts
 def info_prompt(msg1,msg2):
@@ -116,6 +123,8 @@ mem_button.pack(side=LEFT)
 # Functions for code panel
 # Function to clear the code panel and reset the memory and register values
 def clear_all():
+    global ran_before
+    ran_before=False
     simul1.clear_all()
     code_text.delete("1.0","end")
     reg_mem_text.delete("1.0", "end")
@@ -124,18 +133,48 @@ def clear_all():
 
 # Function to run the code at once
 def run_at_once():
+    global ran_before
+    ran_before=False
     if(simul1.PROCESSED_LINES == []):
          info_prompt("Blank File","Please upload an assembly file")
     else:
-        simul1.run()
-        if(reg_button.cget('bg')=='cyan'):
-            display_registers()
-        else:
-            display_memory()
+        try:
+            simul1.run()
+            if(reg_button.cget('bg')=='cyan'):
+                display_registers()
+            else:
+                display_memory()
+        except Exception as e:
+            info_prompt("Error occurred", e)
+
+#Define a function to highlight the text
+def add_highlighter(text, line_number):
+   text.tag_add("start", "1.11","1.17")
+   text.tag_config("start", background="OliveDrab1", foreground="black")
 
 # Function for step by step execution
 def run_step():
-    info_prompt("Work in progress","Sorry , we don't have that functionality yet .")
+    global line_number, ran_before
+    if(simul1.PROCESSED_LINES == []):
+         info_prompt("Blank File","Please upload an assembly file")
+    else: 
+        try:
+            if(ran_before):
+                simul1.run_one_by_one(line_number=line_number)
+                line_number = simul1.i
+            else:
+                simul1.find_labels(0)
+                line_number=simul1.LABELS["main"]
+                simul1.run_one_by_one(line_number=line_number)
+                line_number = simul1.i
+                ran_before=True
+            if(reg_button.cget('bg')=='cyan'):
+                display_registers()
+            else:
+                display_memory()
+        except Exception as e:
+            info_prompt("Error occurred", e)
+    
 # Buttons for code panel
 code_panel_label = Button(code_panel_title, text="CODE TEXT", height=1, font=("Roboto", 14),bg='white')
 code_panel_label.pack(side=LEFT)
@@ -203,18 +242,21 @@ def display_registers():
 def display_memory():
     reg_mem_text.configure(state='normal')
     reg_mem_text.delete("1.0", "end")
-    j=0
+    j=268500992
+    reg_mem_text.insert(END, "The memory starts from the location 268500992 (which is 0x10010000 in hexadecimal) and ends at 268697599 (which is 0x1003ffff in hexadecimal). Each memory element is of four bytes.\n")
     for i in simul1.MEMORY:
             reg_mem_text.insert(END, str(j) + " = " + str(i)+ "\n")
-            j+=1
+            j+=4
     reg_mem_text.pack(side=TOP, fill=X)
     scroll_code.config(command=reg_mem_text.yview)
     reg_mem_text.configure(state='disabled')
 
+
+
 def display_data():
     code_text.configure(state='normal')
     code_text.delete("1.0","end")
-    j=1
+    j=0
     for i in simul1.PROCESSED_LINES:
             code_text.insert(END, str(j) + " : " + str(i)+"\n")
             j+=1

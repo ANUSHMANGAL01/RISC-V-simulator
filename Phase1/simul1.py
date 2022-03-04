@@ -68,9 +68,10 @@ def clear_processed_lines():
     PROCESSED_LINES=[]
 
 def clear_all():
-    global i,lines
+    global i,lines, MEM_POINTER
     lines=[]
     i=0
+    MEM_POINTER = 268500992
     clear_reg()
     clear_mem()
     clear_labels()
@@ -119,6 +120,10 @@ def isConstantAndNeededLength(word, length):
         if(len(word)!=length):
             return False
         word = word[0] + word[2:]
+        for character in word:
+            if not ((character>='0' and character<='9') or (character>='a' and character<='f') or (character>='A' and character<='F')):
+                return False
+        return True
     if word.isnumeric():
         return True
     else:
@@ -544,11 +549,11 @@ def process_lines():
     while j < len(lines):
         line=lines[j].strip()
         if line=="":
-            j+=1
-            continue;
+            del lines[j]
+            continue
         if(line[0]=='#'):
-            j+=1
-            continue;
+            del lines[j]
+            continue
         else:
             PROCESSED_LINES.append(line)
             j+=1
@@ -586,6 +591,25 @@ def main():
     print(MEMORY[0:10])
 
 # main()
+
+def run_one_by_one(line_number):
+    global lines, i
+    i = line_number
+    line = lines[line_number].strip()
+    if line=="":
+        i+=1
+        return
+    if line[0]=='#':
+        i+=1
+        return
+    line = remove_side_comment(line)
+    opcode = line[0 : line.find(' ')].strip()
+    callFunction(opcode,line[line.find(' '):].strip())
+    i+=1
+    print(REGISTERS)
+    print(MEMORY[0:10])
+
+    
 
 # Function to run the code with a different file
 def run():
