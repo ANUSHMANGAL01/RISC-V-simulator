@@ -1,13 +1,12 @@
 from asyncio.windows_events import NULL
-from distutils.log import info
 from tkinter import *
 from tkinter import ttk
 from ctypes import alignment, windll
 from tkinter import filedialog
+from time import strftime
 import os
 from tkinter import messagebox
-
-from pyparsing import line
+from typing import overload
 import simul1
 
 # Defining root
@@ -17,15 +16,30 @@ root.title("risc-v-simulator")
 global line_number, ran_before
 ran_before = False   # used in the step by step running function
 
-
 # Prompts
 def info_prompt(msg1,msg2):
     messagebox.showinfo(msg1,msg2)
 
 # Status messages
 def status_display(str1):
+    system_time = strftime('%H:%M:%S %p')
     status_text.configure(state='normal')
+    status_text.tag_config('time', foreground="#FF0000")
+    status_text.insert(END,system_time+" : ",'time')
     status_text.insert(END, str1 + "\n")
+    status_text.pack(side=TOP, fill=X)
+    scroll_status.config(command=code_text.yview)
+    status_text.configure(state='disabled')
+
+def status_display_3(str1,str2,str3):
+    system_time = strftime('%H:%M:%S %p')
+    status_text.configure(state='normal')
+    status_text.tag_config('time', foreground="#FF0000")
+    status_text.tag_config('file_upload', foreground="#03A062")
+    status_text.insert(END,system_time+" : ",'time')
+    status_text.insert(END,str1)
+    status_text.insert(END,str2,'file_upload')
+    status_text.insert(END, str3 + "\n")
     status_text.pack(side=TOP, fill=X)
     scroll_status.config(command=code_text.yview)
     status_text.configure(state='disabled')
@@ -63,9 +77,16 @@ def upload_file():
     root.filename=filedialog.askopenfilename(initialdir="../RISC-V-simulator/Phase1",title="Select a file",filetypes=(("assembly files",".s"),("assembly files",".asm")))
     simul1.new_file_name=root.filename
     clear_all()
-    simul1.load_code()
+    try:
+        simul1.load_code()
+    except Exception as e:
+        info_prompt('error',e)
     display_data()
-    display_registers()
+    if(reg_button.cget('bg')=='cyan'):
+        display_registers()
+    else:
+        display_memory()
+    status_display_3("New file - ",os.path.basename(root.filename)," uploaded.")
 
 # Top panel buttons
 file_upload_button=custom_button(top_panel,"Upload File","cyan","black", upload_file)
@@ -126,9 +147,14 @@ def clear_all():
     global ran_before
     ran_before=False
     simul1.clear_all()
+    code_text.configure(state='normal')
     code_text.delete("1.0","end")
+    code_text.configure(state='disabled')
     reg_mem_text.delete("1.0", "end")
-    display_registers()
+    if(reg_button.cget('bg')=='cyan'):
+        display_registers()
+    else:
+        display_memory()
     status_display("Registers and memory cleared")
 
 # Function to run the code at once
@@ -155,23 +181,35 @@ def add_highlighter(text, line_number):
 # Function for step by step execution
 def run_step():
     global line_number, ran_before
+    code_text.config(state='normal')
     if(simul1.PROCESSED_LINES == []):
          info_prompt("Blank File","Please upload an assembly file")
     else: 
         try:
             if(ran_before):
-                simul1.run_one_by_one(line_number=line_number)
-                line_number = simul1.i
+                code_text.tag_remove("start", str(line_number)+str('.0'),str(line_number)+str('.')+str(1000))
+                simul1.run_one_by_one(line_number=line_number-1)
+                line_number = simul1.i+1   
+                code_text.tag_add("start", str(line_number)+str('.0'),str(line_number)+str('.')+str(1000))
+                print(len(str(line_number)+" : "))
+                if(simul1.PROCESSED_LINES[line_number-1]==""):
+                    code_text.tag_config("start", background="black", foreground="cyan")
+                else: 
+                    code_text.tag_config("start", background="black", foreground="yellow")
             else:
                 simul1.find_labels(0)
                 line_number=simul1.LABELS["main"]
                 simul1.run_one_by_one(line_number=line_number)
-                line_number = simul1.i
+                line_number = simul1.i+1
+                code_text.tag_add("start", str(line_number)+str('.0'),str(line_number)+str('.')+str(1000))
+                code_text.tag_config("start", background="black", foreground="yellow")
+                
                 ran_before=True
             if(reg_button.cget('bg')=='cyan'):
                 display_registers()
             else:
                 display_memory()
+
         except Exception as e:
             info_prompt("Error occurred", e)
     

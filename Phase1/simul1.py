@@ -511,7 +511,7 @@ def remove_side_comment(line):
 
 #  only handling word right now
 def handle_data(line, j):
-    global MEM_POINTER, lines, LABELS
+    global MEM_POINTER, PROCESSED_LINES, LABELS
     while not line[0]=='.':
         line = line.strip()
         label=""
@@ -529,7 +529,7 @@ def handle_data(line, j):
         else:
             pass  
         j+=1  
-        line=lines[j]
+        line=PROCESSED_LINES[j]
     while(line[0]=='.'):
         if(line.find(".word")==0):
             line = line[line.find(" ")+1: ]
@@ -538,22 +538,16 @@ def handle_data(line, j):
                 MEMORY[(MEM_POINTER-268500992)//4] = int(value)
                 MEM_POINTER+=4
         j+=1
-        line=lines[j]
+        line=PROCESSED_LINES[j]
     return j
 
 def find_labels(j):
     
-    while j < len(lines):
-        line=lines[j].strip()
-        if line=="":
-            j+=1
-            continue
-        if(line[0]=='#'):
-            j+=1
-            continue
+    while j < len(PROCESSED_LINES):
+        line=PROCESSED_LINES[j].strip()
         if(line[0]=='.' and line.find(".data") ==0):
             if(line[5:].strip()==""):
-                j = handle_data(lines[j+1], j+1)
+                j = handle_data(PROCESSED_LINES[j+1], j+1)
                 
             else:
                 j = handle_data(line[5:], j)
@@ -565,7 +559,7 @@ def find_labels(j):
         if(label!=""):
             LABELS[label]=j
             line=line[line.find(':')+1:].strip()
-            lines[j]=line
+            PROCESSED_LINES[j]=line
         j+=1
 
 # Removing white spaces and comments
@@ -575,12 +569,13 @@ def process_lines():
     while j < len(lines):
         line=lines[j].strip()
         if line=="":
-            del lines[j]
+            j+=1
             continue
         if(line[0]=='#'):
-            del lines[j]
+            j+=1
             continue
         else:
+            line = remove_side_comment(line)
             PROCESSED_LINES.append(line)
             j+=1
 
@@ -600,42 +595,33 @@ def main():
     find_labels(0)
     i= LABELS["main"]
     # print(i)
-    while i < len(lines):
-        line=lines[i].strip()
-        if line=="":
-            i+=1
-            continue
-        if line[0]=='#':
+    while i < len(PROCESSED_LINES):
+        line=PROCESSED_LINES[i].strip()
+        if line=='' :
             i+=1
             continue
         line = remove_side_comment(line)
         opcode = line[0 : line.find(' ')].strip()
         callFunction(opcode,line[line.find(' '):].strip())
         i+=1
-
+    print(PROCESSED_LINES)
     print(REGISTERS)
     print(MEMORY[0:10])
 
 # main()
 
 def run_one_by_one(line_number):
-    global lines, i
+    global PROCESSED_LINES, i
     i = line_number
-    line = lines[line_number].strip()
-    if line=="":
+    line = PROCESSED_LINES[line_number].strip()
+    if line == "":
         i+=1
         return
-    if line[0]=='#':
-        i+=1
-        return
-    line = remove_side_comment(line)
     opcode = line[0 : line.find(' ')].strip()
     callFunction(opcode,line[line.find(' '):].strip())
     i+=1
     print(REGISTERS)
     print(MEMORY[0:10])
-
-    
 
 # Function to run the code with a different file
 def run():

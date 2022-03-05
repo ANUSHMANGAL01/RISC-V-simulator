@@ -13,7 +13,7 @@ la x10, Array
 la x11, Arraysize
 lw x11, 0(x11)
 andi x11, x11, -1
-andi x1, x1, 0
+andi x1, x1, 0  #taking and
 outerloop:
     bge x0, x11, outerend
     andi x12, x12, 0
