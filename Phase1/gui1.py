@@ -14,6 +14,7 @@ root = Tk()
 root.title("risc-v-simulator")
 
 global line_number, ran_before
+line_number = 0
 ran_before = False   # used in the step by step running function
 
 # Prompts
@@ -134,12 +135,30 @@ def change_button_colour(but_1,but_2,status):
         but_1.configure(bg="cyan")
         display_registers()
 
+def clear_reg_mem_fields():
+    global ran_before,line_number
+    ran_before=False
+    simul1.clear_all()
+    simul1.load_code()
+    reg_mem_text.delete("1.0", "end")
+    code_text.config(state='normal')
+    code_text.tag_remove("start", str(line_number)+str('.0'),str(line_number)+str('.')+str(1000))
+    if(reg_button.cget('bg')=='cyan'):
+        display_registers()
+    else:
+        display_memory()
+    line_number=0
+    status_display("Registers and memory cleared")
+
 # Buttons for register-memory panel
 reg_button = Button(reg_mem_panel_title, text="REGISTERS", height=1, font=("Roboto", 14),bg="cyan",command =lambda: change_button_colour(reg_button,mem_button,0))
 reg_button.pack(side=LEFT)
 
 mem_button = Button(reg_mem_panel_title, text="MEMORY", height=1, font=("Roboto", 14), bg="white",command=lambda:change_button_colour(reg_button,mem_button,1))
 mem_button.pack(side=LEFT)
+
+clear_fields_button = custom_button(reg_mem_panel_title,"Clear Fields","cyan","black", clear_reg_mem_fields)
+clear_fields_button.pack(side=RIGHT,padx=10)
 
 # Functions for code panel
 # Function to clear the code panel and reset the memory and register values
@@ -170,6 +189,7 @@ def run_at_once():
                 display_registers()
             else:
                 display_memory()
+            status_display("Finished simulation")
         except Exception as e:
             info_prompt("Error occurred", e)
 
@@ -181,29 +201,35 @@ def add_highlighter(text, line_number):
 # Function for step by step execution
 def run_step():
     global line_number, ran_before
-    code_text.config(state='normal')
+    if(line_number == len(simul1.PROCESSED_LINES)):
+        code_text.config(state='disabled')
+        info_prompt("Program end","The program has ended")
+        status_display("Finished simulation")
+        return
     if(simul1.PROCESSED_LINES == []):
          info_prompt("Blank File","Please upload an assembly file")
     else: 
         try:
             if(ran_before):
+                code_text.config(state='normal')
                 code_text.tag_remove("start", str(line_number)+str('.0'),str(line_number)+str('.')+str(1000))
                 simul1.run_one_by_one(line_number=line_number-1)
                 line_number = simul1.i+1   
                 code_text.tag_add("start", str(line_number)+str('.0'),str(line_number)+str('.')+str(1000))
-                print(len(str(line_number)+" : "))
                 if(simul1.PROCESSED_LINES[line_number-1]==""):
                     code_text.tag_config("start", background="black", foreground="cyan")
                 else: 
                     code_text.tag_config("start", background="black", foreground="yellow")
+                code_text.config(state='disabled')
             else:
                 simul1.find_labels(0)
                 line_number=simul1.LABELS["main"]
                 simul1.run_one_by_one(line_number=line_number)
                 line_number = simul1.i+1
+                code_text.config(state='normal')
                 code_text.tag_add("start", str(line_number)+str('.0'),str(line_number)+str('.')+str(1000))
                 code_text.tag_config("start", background="black", foreground="yellow")
-                
+                code_text.config(state='disabled')
                 ran_before=True
             if(reg_button.cget('bg')=='cyan'):
                 display_registers()
@@ -211,6 +237,7 @@ def run_step():
                 display_memory()
 
         except Exception as e:
+            code_text.config(state=DISABLED)
             info_prompt("Error occurred", e)
     
 # Buttons for code panel
@@ -281,7 +308,7 @@ def display_memory():
     reg_mem_text.configure(state='normal')
     reg_mem_text.delete("1.0", "end")
     j=268500992
-    reg_mem_text.insert(END, "The memory starts from the location 268500992 (which is 0x10010000 in hexadecimal) and ends at 268697599 (which is 0x1003ffff in hexadecimal). Each memory element is of four bytes.\n")
+    # reg_mem_text.insert(END, "The memory starts from the location 268500992 (which is 0x10010000 in hexadecimal) and ends at 268697599 (which is 0x1003ffff in hexadecimal). Each memory element is of four bytes.\n")
     for i in simul1.MEMORY:
             reg_mem_text.insert(END, str(j) + " = " + str(i)+ "\n")
             j+=4

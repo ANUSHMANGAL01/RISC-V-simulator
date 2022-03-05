@@ -604,7 +604,6 @@ def main():
         opcode = line[0 : line.find(' ')].strip()
         callFunction(opcode,line[line.find(' '):].strip())
         i+=1
-    print(PROCESSED_LINES)
     print(REGISTERS)
     print(MEMORY[0:10])
 
