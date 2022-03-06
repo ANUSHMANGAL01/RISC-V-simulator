@@ -1,3 +1,11 @@
+# Screenshots
+
+![](Phase1/screenshots/1.PNG)
+
+![](Phase1/screenshots/2.PNG)
+
+![](Phase1/screenshots/3.PNG)
+
 # Guidelines
 
 ### How to run my code?
