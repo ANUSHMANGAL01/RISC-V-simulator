@@ -8,12 +8,12 @@
 
 # Guidelines
 
-### How to run my code?
+### How to run the code?
 
 - Clone the repo in your system
 - make the desired .s or .asm file in folder
-- Open gui.py
-- Run gui.py
+- Open gui1.py
+- Run gui1.py
 - Upload file using 'upload file' option in top left corner
 - By default, the window will show the bubbleSort.asm file
 
