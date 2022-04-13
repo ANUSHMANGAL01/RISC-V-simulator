@@ -3,7 +3,8 @@ from gettext import find
 # Global variables
 global stages
 stages = ["IF", "ID", "EX", "ME", "WB"]
-global i, MEMORY ,REGISTERS, LABELS, ASSEMBLER_DIRECTIVES,PROCESSED_LINES,lines, count_of_stalls
+global i, MEMORY ,REGISTERS, LABELS, ASSEMBLER_DIRECTIVES,PROCESSED_LINES,lines, count_of_stalls, line_numbers_causing_stalls
+line_numbers_causing_stalls=[]
 count_of_stalls = 0
 global pipeline_matrix
 pipeline_matrix = []
@@ -166,7 +167,7 @@ def isConstantAndNeededLength(word, length):
         return False
 
 def fillMatrixForRegisterInstructions():
-    global i, pipeline_matrix, instructions_registers, stages, count_of_stalls
+    global i, pipeline_matrix, instructions_registers, stages, count_of_stalls, line_numbers_causing_stalls
     if(len(pipeline_matrix)==0):
         pipeline_matrix.append(stages)
         return
@@ -205,6 +206,8 @@ def fillMatrixForRegisterInstructions():
                 continue
             if(stages_pointer==2):
                 to_add.append("ST")
+                count_of_stalls+=1
+                line_numbers_causing_stalls.append(i)
                 continue
             to_add.append(stages[stages_pointer])
             stages_pointer+=1
@@ -224,6 +227,8 @@ def fillMatrixForRegisterInstructions():
             to_add.append(stages[stages_pointer])
             stages_pointer+=1
         while(len(to_add)<=prev_prev_WB_index):
+            count_of_stalls+=1
+            line_numbers_causing_stalls.append(i)
             to_add.append("ST")
         while(stages_pointer<5):
             if(len(to_add)>=len(lastRow)):
@@ -238,6 +243,8 @@ def fillMatrixForRegisterInstructions():
             stages_pointer+=1
     pipeline_matrix.append(to_add)
     print(pipeline_matrix)
+    print(count_of_stalls)
+    print(set(line_numbers_causing_stalls))
 
 def handle_add(line):
     global i, pipeline_matrix, instructions_registers, stages
