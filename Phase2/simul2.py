@@ -164,7 +164,7 @@ def isConstantAndNeededLength(word, length):
     else:
         return False
 
-def fillMatrix():
+def fillMatrixForRegisterInstructions():
     global i, pipeline_matrix, instructions_registers, stages
     if(len(pipeline_matrix)==0):
         pipeline_matrix.append(stages)
@@ -175,12 +175,6 @@ def fillMatrix():
         to_add = ["  "]*(prev_index+1)
         lastRow = pipeline_matrix[len(pipeline_matrix)-1]
         stages_pointer=0
-        # for ele in lastRow:
-        #     if(lastRow[len(to_add)] =="ST"):
-        #         to_add.append("ST")
-        #         continue
-        #     to_add.append(stages[stages_pointer])
-        #     stages_pointer+=1
         while(stages_pointer<5):
             if(len(to_add)>len(lastRow)-1):
                 while(stages_pointer<5):
@@ -252,14 +246,18 @@ def handle_add(line):
         raise SyntaxError('Syntax error found in line %d. The register name is wrong.' %i)
     REGISTERS[reg[0]]=REGISTERS[reg[1]]+REGISTERS[reg[2]]
     REGISTERS['x0'] = 0
-    fillMatrix()
+    fillMatrixForRegisterInstructions()
 
 
 def handle_addi(line):
-    global i
+    global i, pipeline_matrix, instructions_registers, stages
     reg =line.split(',')
     reg = list(map(str.strip, reg))
     const =0
+    if(len(instructions_registers)==3):
+        del instructions_registers[0]
+    instructions_registers.append((reg))
+
     if len(reg)!=3 or not (reg[0] in REGISTERS and reg[1] in REGISTERS and isConstantAndNeededLength(reg[2], 10)):
         raise SyntaxError('Syntax error found in line %d. The register name is wrong or the constant value is wrong.' %i)
     if reg[2].find("0x")<0:   #means we did not find "0x"
@@ -268,20 +266,29 @@ def handle_addi(line):
         const= hexadecimal_to_decimal(reg[2]) 
     REGISTERS[reg[0]]=REGISTERS[reg[1]]+const
     REGISTERS['x0'] = 0
+    fillMatrixForRegisterInstructions()
 
 def handle_sub(line):
-    global i
+    global i, pipeline_matrix, instructions_registers, stages
     reg =line.split(',')
     reg = list(map(str.strip, reg))
+
+    if(len(instructions_registers)==3):
+        del instructions_registers[0]
+    instructions_registers.append((reg))
     if len(reg)!=3 or not (reg[0] in REGISTERS and reg[1] in REGISTERS and reg[2] in REGISTERS):
         raise SyntaxError('Syntax error found in line %d. The register name is wrong.' %i)
     REGISTERS[reg[0]]=REGISTERS[reg[1]]-REGISTERS[reg[2]]
     REGISTERS['x0'] = 0
+    fillMatrixForRegisterInstructions()
 
 def handle_slt(line):
-    global i
+    global i, pipeline_matrix, instructions_registers, stages
     reg =line.split(',')
     reg = list(map(str.strip, reg))
+    if(len(instructions_registers)==3):
+        del instructions_registers[0]
+    instructions_registers.append((reg))
     if len(reg)!=3 or not (reg[0] in REGISTERS and reg[1] in REGISTERS and reg[2] in REGISTERS):
         raise SyntaxError('Syntax error found in line %d. The register name is wrong.' %i)
     if(REGISTERS[reg[1]]<REGISTERS[reg[2]]):
@@ -289,6 +296,7 @@ def handle_slt(line):
     else:
         REGISTERS[reg[0]]=0
     REGISTERS['x0'] = 0
+    fillMatrixForRegisterInstructions()
 
 def handle_lw(line):
     global i
@@ -432,13 +440,17 @@ def handle_j(line):
     REGISTERS['x0'] = 0
 
 def handle_mv(line):
-    global i
+    global i, pipeline_matrix, instructions_registers, stages
     reg =line.split(',')
     reg = list(map(str.strip, reg))
+    if(len(instructions_registers)==3):
+        del instructions_registers[0]
+    instructions_registers.append((reg))
     if len(reg)!=2 or not (reg[0] in REGISTERS and reg[1] in REGISTERS):
         raise SyntaxError('Syntax error found in line %d. The register name is wrong.' %i)
     REGISTERS[reg[0]]=REGISTERS[reg[1]]
     REGISTERS['x0'] = 0
+    fillMatrixForRegisterInstructions()
 
 def handle_jal(line):
     global i
@@ -465,10 +477,13 @@ def handle_jalr(line):
     REGISTERS['x0'] = 0
 
 def handle_andi(line):
-    global i
+    global i, pipeline_matrix, instructions_registers, stages
     reg =line.split(',')
     reg = list(map(str.strip, reg))
     const =0
+    if(len(instructions_registers)==3):
+        del instructions_registers[0]
+    instructions_registers.append((reg))
     if len(reg)!=3 or not (reg[0] in REGISTERS and reg[1] in REGISTERS and isConstantAndNeededLength(reg[2], 10)):
         raise SyntaxError('Syntax error found in line %d. The register name is wrong or the constant value is wrong.' %i)
     if reg[2].find("0x")<0:   #means we did not find "0x"
@@ -477,12 +492,16 @@ def handle_andi(line):
         const= hexadecimal_to_decimal(reg[2]) 
     REGISTERS[reg[0]]=REGISTERS[reg[1]] & const
     REGISTERS['x0'] = 0
+    fillMatrixForRegisterInstructions()
 
 def handle_ori(line):
-    global i
+    global i, pipeline_matrix, instructions_registers, stages
     reg =line.split(',')
     reg = list(map(str.strip, reg))
     const =0
+    if(len(instructions_registers)==3):
+        del instructions_registers[0]
+    instructions_registers.append((reg))
     if len(reg)!=3 or not (reg[0] in REGISTERS and reg[1] in REGISTERS and isConstantAndNeededLength(reg[2], 10)):
         raise SyntaxError('Syntax error found in line %d. The register name is wrong or the constant value is wrong.' %i)
     if reg[2].find("0x")<0:   #means we did not find "0x"
@@ -491,38 +510,60 @@ def handle_ori(line):
         const= hexadecimal_to_decimal(reg[2]) 
     REGISTERS[reg[0]]=REGISTERS[reg[1]] | const
     REGISTERS['x0'] = 0
+    fillMatrixForRegisterInstructions()
+
 def handle_or(line):
-    global i
+    global i, pipeline_matrix, instructions_registers, stages
     reg =line.split(',')
     reg = list(map(str.strip, reg))
+    if(len(instructions_registers)==3):
+        del instructions_registers[0]
+    instructions_registers.append((reg))
     if len(reg)!=3 or not (reg[0] in REGISTERS and reg[1] in REGISTERS and reg[2] in REGISTERS):
         raise SyntaxError('Syntax error found in line %d. The register name is wrong.' %i)
     REGISTERS[reg[0]]=REGISTERS[reg[1]] | REGISTERS[reg[2]]
     REGISTERS['x0'] = 0
+    fillMatrixForRegisterInstructions()
+
 def handle_and(line):
-    global i
+    global i, pipeline_matrix, instructions_registers, stages
     reg =line.split(',')
     reg = list(map(str.strip, reg))
+    if(len(instructions_registers)==3):
+        del instructions_registers[0]
+    instructions_registers.append((reg))
     if len(reg)!=3 or not (reg[0] in REGISTERS and reg[1] in REGISTERS and reg[2] in REGISTERS):
         raise SyntaxError('Syntax error found in line %d. The register name is wrong.' %i)
     REGISTERS[reg[0]]=REGISTERS[reg[1]] & REGISTERS[reg[2]]
     REGISTERS['x0'] = 0
+    fillMatrixForRegisterInstructions()
+
 def handle_sll(line):
-    global i
+    global i, pipeline_matrix, instructions_registers, stages
     reg =line.split(',')
     reg = list(map(str.strip, reg))
+    if(len(instructions_registers)==3):
+        del instructions_registers[0]
+    instructions_registers.append((reg))
     if len(reg)!=3 or not (reg[0] in REGISTERS and reg[1] in REGISTERS and reg[2] in REGISTERS):
         raise SyntaxError('Syntax error found in line %d. The register name is wrong.' %i)
     REGISTERS[reg[0]]=REGISTERS[reg[1]] << REGISTERS[reg[2]]
     REGISTERS['x0'] = 0
+    fillMatrixForRegisterInstructions()
+
 def handle_srl(line):
-    global i
+    global i, pipeline_matrix, instructions_registers, stages
     reg =line.split(',')
     reg = list(map(str.strip, reg))
+    if(len(instructions_registers)==3):
+        del instructions_registers[0]
+    instructions_registers.append((reg))
     if len(reg)!=3 or not (reg[0] in REGISTERS and reg[1] in REGISTERS and reg[2] in REGISTERS):
         raise SyntaxError('Syntax error found in line %d. The register name is wrong.' %i)
     REGISTERS[reg[0]]=REGISTERS[reg[1]] >> REGISTERS[reg[2]]
     REGISTERS['x0'] = 0
+    fillMatrixForRegisterInstructions()
+
 def handle_la(line):
     global i
     reg =line.split(',')
