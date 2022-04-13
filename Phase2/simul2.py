@@ -199,6 +199,8 @@ def fillMatrix():
         lastRow = pipeline_matrix[len(pipeline_matrix)-1]
         stages_pointer=0
         for ele in lastRow:
+            if(lastRow.index(ele)<prev_index):
+                continue
             if(ele == "  " or ele=="IF"): 
                 continue
             if(len(to_add) > getIndex(pipeline_matrix[len(pipeline_matrix)-1], "WB")):
