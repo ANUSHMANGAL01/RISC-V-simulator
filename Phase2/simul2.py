@@ -3,7 +3,8 @@ from gettext import find
 # Global variables
 global stages
 stages = ["IF", "ID", "EX", "ME", "WB"]
-global i, MEMORY ,REGISTERS, LABELS, ASSEMBLER_DIRECTIVES,PROCESSED_LINES,lines
+global i, MEMORY ,REGISTERS, LABELS, ASSEMBLER_DIRECTIVES,PROCESSED_LINES,lines, count_of_stalls
+count_of_stalls = 0
 global pipeline_matrix
 pipeline_matrix = []
 global instructions_registers
@@ -165,7 +166,7 @@ def isConstantAndNeededLength(word, length):
         return False
 
 def fillMatrixForRegisterInstructions():
-    global i, pipeline_matrix, instructions_registers, stages
+    global i, pipeline_matrix, instructions_registers, stages, count_of_stalls
     if(len(pipeline_matrix)==0):
         pipeline_matrix.append(stages)
         return
@@ -225,9 +226,14 @@ def fillMatrixForRegisterInstructions():
         while(len(to_add)<=prev_prev_WB_index):
             to_add.append("ST")
         while(stages_pointer<5):
+            if(len(to_add)>=len(lastRow)):
+                break
             if(lastRow[len(to_add)] =="ST"):
                 to_add.append("ST")
                 continue
+            to_add.append(stages[stages_pointer])
+            stages_pointer+=1
+        while(stages_pointer<5):
             to_add.append(stages[stages_pointer])
             stages_pointer+=1
     pipeline_matrix.append(to_add)
