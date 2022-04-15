@@ -6,8 +6,8 @@ stages = ["IF", "ID", "EX", "ME", "WB"]
 global i, MEMORY ,REGISTERS, LABELS, ASSEMBLER_DIRECTIVES,PROCESSED_LINES,lines, count_of_stalls, line_numbers_causing_stalls
 line_numbers_causing_stalls=[]
 count_of_stalls = 0
-global pipeline_matrix
-pipeline_matrix = []
+global non_forwarding_pipeline_matrix
+non_forwarding_pipeline_matrix = []
 global instructions_registers
 instructions_registers=[]
 
@@ -54,7 +54,7 @@ MEM_POINTER = 268500992  # MEMORY[0]
 
 
 LABELS = {}
-REGISTERS = {'x0': 0, 'x1': 0, 'x2': 0, 'x3': 0, 'x4': 0, 'x5': 0, 'x6': 0, 'x7': 0, 'x8': 0,
+REGISTERS = {'x0': 0, 'x1': 0, 'x2': 268500992, 'x3': 0, 'x4': 0, 'x5': 0, 'x6': 0, 'x7': 0, 'x8': 0,
              'x9': 0, 'x10': 0, 'x11': 0, 'x12': 0, 'x13': 0, 'x14': 0, 'x15': 0, 'x16': 0, 'x17': 0,
              'x18': 0, 'x19': 0, 'x20': 0, 'x21': 0, 'x22': 0, 'x23': 0, 'x24': 0, 'x25': 0, 'x26': 0, 'x27': 0,
              'x28': 0, 'x29': 0, 'x30': 0, 'x31': 0}
@@ -166,16 +166,16 @@ def isConstantAndNeededLength(word, length):
     else:
         return False
 
-def fillMatrixForRegisterInstructions():
-    global i, pipeline_matrix, instructions_registers, stages, count_of_stalls, line_numbers_causing_stalls
-    if(len(pipeline_matrix)==0):
-        pipeline_matrix.append(stages)
+def fillMatrixNonForwardingForRegisterAndLoadInstructions():
+    global i, non_forwarding_pipeline_matrix, instructions_registers, stages, count_of_stalls, line_numbers_causing_stalls
+    if(len(non_forwarding_pipeline_matrix)==0):
+        non_forwarding_pipeline_matrix.append(stages)
         return
 
     if(check_data_dependency()==0):
-        prev_index = getIndex(pipeline_matrix[len(pipeline_matrix)-1], "IF")
+        prev_index = getIndex(non_forwarding_pipeline_matrix[len(non_forwarding_pipeline_matrix)-1], "IF")
         to_add = ["  "]*(prev_index+1)
-        lastRow = pipeline_matrix[len(pipeline_matrix)-1]
+        lastRow = non_forwarding_pipeline_matrix[len(non_forwarding_pipeline_matrix)-1]
         stages_pointer=0
         while(stages_pointer<5):
             if(len(to_add)>len(lastRow)-1):
@@ -190,16 +190,16 @@ def fillMatrixForRegisterInstructions():
             stages_pointer+=1   
 
     elif(check_data_dependency()==1):
-        prev_index = getIndex(pipeline_matrix[len(pipeline_matrix)-1], "IF")
+        prev_index = getIndex(non_forwarding_pipeline_matrix[len(non_forwarding_pipeline_matrix)-1], "IF")
         to_add = ["  "]*(prev_index+1)
-        lastRow = pipeline_matrix[len(pipeline_matrix)-1]
+        lastRow = non_forwarding_pipeline_matrix[len(non_forwarding_pipeline_matrix)-1]
         stages_pointer=0
         for ele in lastRow:
             if(lastRow.index(ele)<prev_index):
                 continue
             if(ele == "  " or ele=="IF"): 
                 continue
-            if(len(to_add) > getIndex(pipeline_matrix[len(pipeline_matrix)-1], "WB")):
+            if(len(to_add) > getIndex(non_forwarding_pipeline_matrix[len(non_forwarding_pipeline_matrix)-1], "WB")):
                 break
             if(ele =="ST"):
                 to_add.append("ST")
@@ -215,10 +215,10 @@ def fillMatrixForRegisterInstructions():
             to_add.append(stages[stages_pointer])
             stages_pointer+=1 
     elif(check_data_dependency()==2):
-        prev_index = getIndex(pipeline_matrix[len(pipeline_matrix)-1], "IF")
+        prev_index = getIndex(non_forwarding_pipeline_matrix[len(non_forwarding_pipeline_matrix)-1], "IF")
         to_add = ["  "]*(prev_index+1)
-        prev_prev_WB_index = getIndex(pipeline_matrix[len(pipeline_matrix)-2], "WB")
-        lastRow = pipeline_matrix[len(pipeline_matrix)-1]
+        prev_prev_WB_index = getIndex(non_forwarding_pipeline_matrix[len(non_forwarding_pipeline_matrix)-2], "WB")
+        lastRow = non_forwarding_pipeline_matrix[len(non_forwarding_pipeline_matrix)-1]
         stages_pointer=0
         while(stages_pointer<2):
             if(lastRow[len(to_add)] =="ST"):
@@ -241,13 +241,121 @@ def fillMatrixForRegisterInstructions():
         while(stages_pointer<5):
             to_add.append(stages[stages_pointer])
             stages_pointer+=1
-    pipeline_matrix.append(to_add)
-    print(pipeline_matrix)
+    non_forwarding_pipeline_matrix.append(to_add)
+    print(non_forwarding_pipeline_matrix)
     print(count_of_stalls)
     print(set(line_numbers_causing_stalls))
 
+def fillMatrixNonForwardingForStoreInstruction():
+    global i, non_forwarding_pipeline_matrix, instructions_registers, stages, count_of_stalls, line_numbers_causing_stalls
+    if(len(non_forwarding_pipeline_matrix)==0  or len(instructions_registers)==0 or len(instructions_registers)==1 ):
+        non_forwarding_pipeline_matrix.append(stages)
+        return
+    
+    lastRow = non_forwarding_pipeline_matrix[len(non_forwarding_pipeline_matrix)-1]
+    prev_index = getIndex(lastRow, "IF")
+    to_add = ["  "]*(prev_index+1)
+    stages_pointer=0
+
+    current_registers = instructions_registers[len(instructions_registers)-1]
+    previous_registers = instructions_registers[len(instructions_registers)-2]
+
+    if(previous_registers[0] == current_registers[2]):
+        for ele in lastRow:
+            if(lastRow.index(ele)<prev_index):
+                continue
+            if(ele == "  " or ele=="IF"): 
+                continue
+            if(len(to_add) > getIndex(non_forwarding_pipeline_matrix[len(non_forwarding_pipeline_matrix)-1], "WB")):
+                break
+            if(ele =="ST"):
+                to_add.append("ST")
+                continue
+            if(stages_pointer==2):
+                to_add.append("ST")
+                count_of_stalls+=1
+                line_numbers_causing_stalls.append(i)
+                continue
+            to_add.append(stages[stages_pointer])
+            stages_pointer+=1
+        while(stages_pointer<5):
+            to_add.append(stages[stages_pointer])
+            stages_pointer+=1
+        non_forwarding_pipeline_matrix.append(to_add)
+        return
+
+    if( len(instructions_registers)== 3 and instructions_registers[0][0]==current_registers[2]):     # checking current instruction with the previous ot previous instruction for dependency and ensuring that there are at least three instructions so that we can check
+        prev_prev_WB_index = getIndex(non_forwarding_pipeline_matrix[len(non_forwarding_pipeline_matrix)-2], "WB")
+        lastRow = non_forwarding_pipeline_matrix[len(non_forwarding_pipeline_matrix)-1]
+        stages_pointer=0
+        while(stages_pointer<2):
+            if(lastRow[len(to_add)] =="ST"):
+                to_add.append("ST")
+                continue
+            to_add.append(stages[stages_pointer])
+            stages_pointer+=1
+        while(len(to_add)<=prev_prev_WB_index):
+            count_of_stalls+=1
+            line_numbers_causing_stalls.append(i)
+            to_add.append("ST")
+        while(stages_pointer<5):
+            if(len(to_add)>=len(lastRow)):
+                break
+            if(lastRow[len(to_add)] =="ST"):
+                to_add.append("ST")
+                continue
+            to_add.append(stages[stages_pointer])
+            stages_pointer+=1
+        while(stages_pointer<5):
+            to_add.append(stages[stages_pointer])
+            stages_pointer+=1
+        non_forwarding_pipeline_matrix.append(to_add)  
+        return
+
+    if(previous_registers[0] == current_registers[1]):
+        stages_pointer=0
+        for ele in lastRow:
+            if(lastRow.index(ele)<prev_index):
+                continue
+            if(ele == "  " or ele=="IF"): 
+                continue
+            if(len(to_add) > getIndex(non_forwarding_pipeline_matrix[len(non_forwarding_pipeline_matrix)-1], "WB")):
+                break
+            if(ele =="ST"):
+                to_add.append("ST")
+                continue
+            if(stages_pointer==3):
+                to_add.append("ST")
+                count_of_stalls+=1
+                line_numbers_causing_stalls.append(i)
+                continue
+            to_add.append(stages[stages_pointer])
+            stages_pointer+=1
+        while(stages_pointer<5):
+            to_add.append(stages[stages_pointer])
+            stages_pointer+=1
+        non_forwarding_pipeline_matrix.append(to_add)
+        return
+    # if code comes here, means no dependency
+    lastRow = non_forwarding_pipeline_matrix[len(non_forwarding_pipeline_matrix)-1]
+    stages_pointer=0
+    while(stages_pointer<5):
+        if(len(to_add)>len(lastRow)-1):
+            while(stages_pointer<5):
+                to_add.append(stages[stages_pointer])
+                stages_pointer+=1
+            break
+        if( lastRow[len(to_add)] =="ST"):
+            to_add.append("ST")
+            continue
+        to_add.append(stages[stages_pointer])
+        stages_pointer+=1 
+    non_forwarding_pipeline_matrix.append(to_add)  
+    return  
+
+
 def handle_add(line):
-    global i, pipeline_matrix, instructions_registers, stages
+    global i, non_forwarding_pipeline_matrix, instructions_registers, stages
     reg =line.split(',')
     reg = list(map(str.strip, reg))
 
@@ -259,11 +367,11 @@ def handle_add(line):
         raise SyntaxError('Syntax error found in line %d. The register name is wrong.' %i)
     REGISTERS[reg[0]]=REGISTERS[reg[1]]+REGISTERS[reg[2]]
     REGISTERS['x0'] = 0
-    fillMatrixForRegisterInstructions()
+    fillMatrixNonForwardingForRegisterAndLoadInstructions()
 
 
 def handle_addi(line):
-    global i, pipeline_matrix, instructions_registers, stages
+    global i, non_forwarding_pipeline_matrix, instructions_registers, stages
     reg =line.split(',')
     reg = list(map(str.strip, reg))
     const =0
@@ -279,10 +387,10 @@ def handle_addi(line):
         const= hexadecimal_to_decimal(reg[2]) 
     REGISTERS[reg[0]]=REGISTERS[reg[1]]+const
     REGISTERS['x0'] = 0
-    fillMatrixForRegisterInstructions()
+    fillMatrixNonForwardingForRegisterAndLoadInstructions()
 
 def handle_sub(line):
-    global i, pipeline_matrix, instructions_registers, stages
+    global i, non_forwarding_pipeline_matrix, instructions_registers, stages
     reg =line.split(',')
     reg = list(map(str.strip, reg))
 
@@ -293,10 +401,10 @@ def handle_sub(line):
         raise SyntaxError('Syntax error found in line %d. The register name is wrong.' %i)
     REGISTERS[reg[0]]=REGISTERS[reg[1]]-REGISTERS[reg[2]]
     REGISTERS['x0'] = 0
-    fillMatrixForRegisterInstructions()
+    fillMatrixNonForwardingForRegisterAndLoadInstructions()
 
 def handle_slt(line):
-    global i, pipeline_matrix, instructions_registers, stages
+    global i, non_forwarding_pipeline_matrix, instructions_registers, stages
     reg =line.split(',')
     reg = list(map(str.strip, reg))
     if(len(instructions_registers)==3):
@@ -309,24 +417,33 @@ def handle_slt(line):
     else:
         REGISTERS[reg[0]]=0
     REGISTERS['x0'] = 0
-    fillMatrixForRegisterInstructions()
+    fillMatrixNonForwardingForRegisterAndLoadInstructions()
 
 def handle_lw(line):
-    global i
+    global i, non_forwarding_pipeline_matrix, instructions_registers, stages
+   
     reg =line.split(',')
     reg = list(map(str.strip, reg))
     arg = reg[1]
     offset=(arg[0:arg.find('(')].strip())
     arg=arg[arg.find('(')+1 : arg.find(')')]
+
+    reg[1] = arg
+    if(len(instructions_registers)==3):
+        del instructions_registers[0]
+    instructions_registers.append((reg))
+
+
     if len(reg)!=2 or not (reg[0] in REGISTERS and arg in REGISTERS and isConstantAndNeededLength(offset, 0)):
         raise SyntaxError('Syntax error found in line %d.' %i)
     offset = int(offset)
     ma = REGISTERS[arg]+offset
     REGISTERS[reg[0]]=MEMORY[(ma-268500992)//4]
     REGISTERS['x0'] = 0
+    fillMatrixNonForwardingForRegisterAndLoadInstructions()
 
 def handle_li(line):
-    global i
+    global i, non_forwarding_pipeline_matrix, instructions_registers, stages
     reg =line.split(',')
     reg = list(map(str.strip, reg))
     if len(reg)!=2 or not (reg[0] in REGISTERS and isConstantAndNeededLength(reg[1], 10)):
@@ -337,9 +454,15 @@ def handle_li(line):
     else:
         REGISTERS[reg[0]]=hexadecimal_to_decimal(reg[1]) 
     REGISTERS['x0'] = 0
+    del reg[1]
+    if(len(instructions_registers)==3):
+        del instructions_registers[0]
+    instructions_registers.append((reg))
+    fillMatrixNonForwardingForRegisterAndLoadInstructions()
+
 
 def handle_lui(line):
-    global i
+    global i, non_forwarding_pipeline_matrix, instructions_registers, stages
     reg =line.split(',')
     reg = list(map(str.strip, reg))
     if len(reg)!=2 or not (reg[0] in REGISTERS and isConstantAndNeededLength(reg[1], 7)):
@@ -350,9 +473,14 @@ def handle_lui(line):
     else:
         REGISTERS[reg[0]]=hexadecimal_to_decimal(reg[1]+"000") 
     REGISTERS['x0'] = 0
+    del reg[1]
+    if(len(instructions_registers)==3):
+        del instructions_registers[0]
+    instructions_registers.append((reg))
+    fillMatrixNonForwardingForRegisterAndLoadInstructions()
 
 def handle_sw(line):
-    global i
+    global i, non_forwarding_pipeline_matrix, instructions_registers, stages
     reg =line.split(',')
     reg = list(map(str.strip, reg))
     arg = reg[1]
@@ -364,6 +492,14 @@ def handle_sw(line):
     ma = REGISTERS[arg]+offset;
     MEMORY[(ma-268500992)//4]=REGISTERS[reg[0]]
     REGISTERS['x0'] = 0
+    
+    if(len(instructions_registers)==3):
+        del instructions_registers[0]
+    reg[1] = reg[0]
+    reg.append(arg)
+    reg[0] = '0'
+    instructions_registers.append((reg))
+    fillMatrixNonForwardingForStoreInstruction()
 
 def handle_bne(line):
     global i
@@ -453,7 +589,7 @@ def handle_j(line):
     REGISTERS['x0'] = 0
 
 def handle_mv(line):
-    global i, pipeline_matrix, instructions_registers, stages
+    global i, non_forwarding_pipeline_matrix, instructions_registers, stages
     reg =line.split(',')
     reg = list(map(str.strip, reg))
     if(len(instructions_registers)==3):
@@ -463,7 +599,7 @@ def handle_mv(line):
         raise SyntaxError('Syntax error found in line %d. The register name is wrong.' %i)
     REGISTERS[reg[0]]=REGISTERS[reg[1]]
     REGISTERS['x0'] = 0
-    fillMatrixForRegisterInstructions()
+    fillMatrixNonForwardingForRegisterAndLoadInstructions()
 
 def handle_jal(line):
     global i
@@ -490,7 +626,7 @@ def handle_jalr(line):
     REGISTERS['x0'] = 0
 
 def handle_andi(line):
-    global i, pipeline_matrix, instructions_registers, stages
+    global i, non_forwarding_pipeline_matrix, instructions_registers, stages
     reg =line.split(',')
     reg = list(map(str.strip, reg))
     const =0
@@ -505,10 +641,10 @@ def handle_andi(line):
         const= hexadecimal_to_decimal(reg[2]) 
     REGISTERS[reg[0]]=REGISTERS[reg[1]] & const
     REGISTERS['x0'] = 0
-    fillMatrixForRegisterInstructions()
+    fillMatrixNonForwardingForRegisterAndLoadInstructions()
 
 def handle_ori(line):
-    global i, pipeline_matrix, instructions_registers, stages
+    global i, non_forwarding_pipeline_matrix, instructions_registers, stages
     reg =line.split(',')
     reg = list(map(str.strip, reg))
     const =0
@@ -523,10 +659,10 @@ def handle_ori(line):
         const= hexadecimal_to_decimal(reg[2]) 
     REGISTERS[reg[0]]=REGISTERS[reg[1]] | const
     REGISTERS['x0'] = 0
-    fillMatrixForRegisterInstructions()
+    fillMatrixNonForwardingForRegisterAndLoadInstructions()
 
 def handle_or(line):
-    global i, pipeline_matrix, instructions_registers, stages
+    global i, non_forwarding_pipeline_matrix, instructions_registers, stages
     reg =line.split(',')
     reg = list(map(str.strip, reg))
     if(len(instructions_registers)==3):
@@ -536,10 +672,10 @@ def handle_or(line):
         raise SyntaxError('Syntax error found in line %d. The register name is wrong.' %i)
     REGISTERS[reg[0]]=REGISTERS[reg[1]] | REGISTERS[reg[2]]
     REGISTERS['x0'] = 0
-    fillMatrixForRegisterInstructions()
+    fillMatrixNonForwardingForRegisterAndLoadInstructions()
 
 def handle_and(line):
-    global i, pipeline_matrix, instructions_registers, stages
+    global i, non_forwarding_pipeline_matrix, instructions_registers, stages
     reg =line.split(',')
     reg = list(map(str.strip, reg))
     if(len(instructions_registers)==3):
@@ -549,10 +685,10 @@ def handle_and(line):
         raise SyntaxError('Syntax error found in line %d. The register name is wrong.' %i)
     REGISTERS[reg[0]]=REGISTERS[reg[1]] & REGISTERS[reg[2]]
     REGISTERS['x0'] = 0
-    fillMatrixForRegisterInstructions()
+    fillMatrixNonForwardingForRegisterAndLoadInstructions()
 
 def handle_sll(line):
-    global i, pipeline_matrix, instructions_registers, stages
+    global i, non_forwarding_pipeline_matrix, instructions_registers, stages
     reg =line.split(',')
     reg = list(map(str.strip, reg))
     if(len(instructions_registers)==3):
@@ -562,10 +698,10 @@ def handle_sll(line):
         raise SyntaxError('Syntax error found in line %d. The register name is wrong.' %i)
     REGISTERS[reg[0]]=REGISTERS[reg[1]] << REGISTERS[reg[2]]
     REGISTERS['x0'] = 0
-    fillMatrixForRegisterInstructions()
+    fillMatrixNonForwardingForRegisterAndLoadInstructions()
 
 def handle_srl(line):
-    global i, pipeline_matrix, instructions_registers, stages
+    global i, non_forwarding_pipeline_matrix, instructions_registers, stages
     reg =line.split(',')
     reg = list(map(str.strip, reg))
     if(len(instructions_registers)==3):
@@ -575,16 +711,21 @@ def handle_srl(line):
         raise SyntaxError('Syntax error found in line %d. The register name is wrong.' %i)
     REGISTERS[reg[0]]=REGISTERS[reg[1]] >> REGISTERS[reg[2]]
     REGISTERS['x0'] = 0
-    fillMatrixForRegisterInstructions()
+    fillMatrixNonForwardingForRegisterAndLoadInstructions()
 
 def handle_la(line):
-    global i
+    global i, non_forwarding_pipeline_matrix, instructions_registers, stages
     reg =line.split(',')
     reg = list(map(str.strip, reg))
     if len(reg)!=2 or not (reg[0] in REGISTERS and reg[1] in LABELS):
         raise SyntaxError('Syntax error found in line %d. The register or the label name is wrong.' %i)
     REGISTERS[reg[0]] = LABELS[reg[1]]    # now when this will be called, i will be given this value and will be incrememented in the main while loop
     REGISTERS['x0'] = 0
+    del reg[1]
+    if(len(instructions_registers)==3):
+        del instructions_registers[0]
+    instructions_registers.append((reg))
+    fillMatrixNonForwardingForRegisterAndLoadInstructions()
 
 def callFunction(opcode,line):
     global i
