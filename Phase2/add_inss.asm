@@ -34,5 +34,5 @@
 
 main:
 add x1, x2, x3
-add x4, x5, x6
-add x1, x4, x1
+lw  x2,0(x1)
+add x4,x5,x6
