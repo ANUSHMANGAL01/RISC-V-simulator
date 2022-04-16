@@ -3,11 +3,15 @@ from gettext import find
 # Global variables
 global stages
 stages = ["IF", "ID", "EX", "ME", "WB"]
-global i, MEMORY ,REGISTERS, LABELS, ASSEMBLER_DIRECTIVES,PROCESSED_LINES,lines, count_of_stalls, line_numbers_causing_stalls
-line_numbers_causing_stalls=[]
-count_of_stalls = 0
+global i, MEMORY ,REGISTERS, LABELS, ASSEMBLER_DIRECTIVES,PROCESSED_LINES,lines, count_of_stalls_for_non_forwarding, count_of_stalls_for_forwarding ,line_numbers_causing_stalls_for_non_forwarding,line_numbers_causing_stalls_for_forwarding
+line_numbers_causing_stalls_for_non_forwarding=[]
+line_numbers_causing_stalls_for_forwarding=[]
+count_of_stalls_for_non_forwarding = 0
+count_of_stalls_for_forwarding = 0
 global non_forwarding_pipeline_matrix
 non_forwarding_pipeline_matrix = []
+global forwarding_pipeline_matrix
+forwarding_pipeline_matrix = []
 global instructions_registers
 instructions_registers=[]
 
@@ -167,7 +171,7 @@ def isConstantAndNeededLength(word, length):
         return False
 
 def fillMatrixNonForwardingForRegisterLoadAndBranchInstructions():
-    global i, non_forwarding_pipeline_matrix, instructions_registers, stages, count_of_stalls, line_numbers_causing_stalls
+    global i, non_forwarding_pipeline_matrix, instructions_registers, stages, count_of_stalls_for_non_forwarding, line_numbers_causing_stalls_for_non_forwarding
     print(instructions_registers)
     if(len(non_forwarding_pipeline_matrix)==0):
         non_forwarding_pipeline_matrix.append(stages)
@@ -213,8 +217,8 @@ def fillMatrixNonForwardingForRegisterLoadAndBranchInstructions():
                 continue
             if(stages_pointer==2):
                 to_add.append("ST")
-                count_of_stalls+=1
-                line_numbers_causing_stalls.append(i)
+                count_of_stalls_for_non_forwarding+=1
+                line_numbers_causing_stalls_for_non_forwarding.append(i)
                 continue
             to_add.append(stages[stages_pointer])
             stages_pointer+=1
@@ -237,8 +241,8 @@ def fillMatrixNonForwardingForRegisterLoadAndBranchInstructions():
             to_add.append(stages[stages_pointer])
             stages_pointer+=1
         while(len(to_add)<=prev_prev_WB_index):
-            count_of_stalls+=1
-            line_numbers_causing_stalls.append(i)
+            count_of_stalls_for_non_forwarding+=1
+            line_numbers_causing_stalls_for_non_forwarding.append(i)
             to_add.append("ST")
         while(stages_pointer<5):
             if(len(to_add)>=len(lastRow)):
@@ -252,12 +256,19 @@ def fillMatrixNonForwardingForRegisterLoadAndBranchInstructions():
             to_add.append(stages[stages_pointer])
             stages_pointer+=1
     non_forwarding_pipeline_matrix.append(to_add)
+    print("Non-forwarding --------------------------------------------------------------\n")
+    print("Matrix :\n")
     print(non_forwarding_pipeline_matrix)
-    print(count_of_stalls)
-    print(set(line_numbers_causing_stalls))
+    print("Count of stalls :\n")
+    print(count_of_stalls_for_non_forwarding)
+    s = set(line_numbers_causing_stalls_for_non_forwarding)
+    print("Line numbers :\n")
+    if(len(s)):
+        print(s)
+    print("-----------------------------------------------------------------------------\n")
 
 def fillMatrixNonForwardingForStoreInstruction():
-    global i, non_forwarding_pipeline_matrix, instructions_registers, stages, count_of_stalls, line_numbers_causing_stalls
+    global i, non_forwarding_pipeline_matrix, instructions_registers, stages, count_of_stalls_for_non_forwarding, line_numbers_causing_stalls_for_non_forwarding
     if(len(non_forwarding_pipeline_matrix)==0  or len(instructions_registers)==0 or len(instructions_registers)==1 ):
         non_forwarding_pipeline_matrix.append(stages)
         return
@@ -286,8 +297,8 @@ def fillMatrixNonForwardingForStoreInstruction():
                 continue
             if(stages_pointer==2):
                 to_add.append("ST")
-                count_of_stalls+=1
-                line_numbers_causing_stalls.append(i)
+                count_of_stalls_for_non_forwarding+=1
+                line_numbers_causing_stalls_for_non_forwarding.append(i)
                 continue
             to_add.append(stages[stages_pointer])
             stages_pointer+=1
@@ -308,8 +319,8 @@ def fillMatrixNonForwardingForStoreInstruction():
             to_add.append(stages[stages_pointer])
             stages_pointer+=1
         while(len(to_add)<=prev_prev_WB_index):
-            count_of_stalls+=1
-            line_numbers_causing_stalls.append(i)
+            count_of_stalls_for_non_forwarding+=1
+            line_numbers_causing_stalls_for_non_forwarding.append(i)
             to_add.append("ST")
         while(stages_pointer<5):
             if(len(to_add)>=len(lastRow)):
@@ -339,8 +350,8 @@ def fillMatrixNonForwardingForStoreInstruction():
                 continue
             if(stages_pointer==3):
                 to_add.append("ST")
-                count_of_stalls+=1
-                line_numbers_causing_stalls.append(i)
+                count_of_stalls_for_non_forwarding+=1
+                line_numbers_causing_stalls_for_non_forwarding.append(i)
                 continue
             to_add.append(stages[stages_pointer])
             stages_pointer+=1
@@ -366,9 +377,42 @@ def fillMatrixNonForwardingForStoreInstruction():
     non_forwarding_pipeline_matrix.append(to_add)  
     return  
 
-
+def fillMatrixForwardingForRegisterInstructions():
+    global i, forwarding_pipeline_matrix, instructions_registers, stages, count_of_stalls_for_forwarding, line_numbers_causing_stalls_for_forwarding
+    print(instructions_registers)
+    if(len(forwarding_pipeline_matrix)==0):
+        forwarding_pipeline_matrix.append(stages)
+        return
+        
+    prev_index = getIndex(forwarding_pipeline_matrix[len(forwarding_pipeline_matrix)-1], "IF")
+    to_add = ["  "]*(prev_index+1)
+    lastRow = forwarding_pipeline_matrix[len(forwarding_pipeline_matrix)-1]
+    stages_pointer=0
+    while(stages_pointer<5):
+        if(len(to_add)>len(lastRow)-1):
+            while(stages_pointer<5):
+                to_add.append(stages[stages_pointer])
+                stages_pointer+=1
+            break
+        if( lastRow[len(to_add)] =="ST"):
+            to_add.append("ST")
+            continue
+        to_add.append(stages[stages_pointer])
+        stages_pointer+=1   
+    forwarding_pipeline_matrix.append(to_add)
+    print("Forwarding --------------------------------------------------------------\n")
+    print("Matrix :\n")
+    print(forwarding_pipeline_matrix)
+    print("Count of stalls :\n")
+    print(count_of_stalls_for_forwarding)
+    s = set(line_numbers_causing_stalls_for_forwarding)
+    print("Line numbers :\n")
+    if(len(s)):
+        print(s)
+    print("-----------------------------------------------------------------------------\n")
+    
 def handle_add(line):
-    global i, non_forwarding_pipeline_matrix, instructions_registers, stages
+    global i, non_forwarding_pipeline_matrix,forwarding_pipeline_matrix, instructions_registers, stages
     reg =line.split(',')
     reg = list(map(str.strip, reg))
 
@@ -381,6 +425,7 @@ def handle_add(line):
     REGISTERS[reg[0]]=REGISTERS[reg[1]]+REGISTERS[reg[2]]
     REGISTERS['x0'] = 0
     fillMatrixNonForwardingForRegisterLoadAndBranchInstructions()
+    fillMatrixForwardingForRegisterInstructions()
 
 
 def handle_addi(line):
@@ -401,6 +446,7 @@ def handle_addi(line):
     REGISTERS[reg[0]]=REGISTERS[reg[1]]+const
     REGISTERS['x0'] = 0
     fillMatrixNonForwardingForRegisterLoadAndBranchInstructions()
+    fillMatrixForwardingForRegisterInstructions()
 
 def handle_sub(line):
     global i, non_forwarding_pipeline_matrix, instructions_registers, stages
@@ -415,6 +461,7 @@ def handle_sub(line):
     REGISTERS[reg[0]]=REGISTERS[reg[1]]-REGISTERS[reg[2]]
     REGISTERS['x0'] = 0
     fillMatrixNonForwardingForRegisterLoadAndBranchInstructions()
+    fillMatrixForwardingForRegisterInstructions()
 
 def handle_slt(line):
     global i, non_forwarding_pipeline_matrix, instructions_registers, stages
@@ -669,6 +716,7 @@ def handle_mv(line):
     REGISTERS[reg[0]]=REGISTERS[reg[1]]
     REGISTERS['x0'] = 0
     fillMatrixNonForwardingForRegisterLoadAndBranchInstructions()
+    fillMatrixForwardingForRegisterInstructions()
 
 def handle_jal(line):
     global i
@@ -711,6 +759,7 @@ def handle_andi(line):
     REGISTERS[reg[0]]=REGISTERS[reg[1]] & const
     REGISTERS['x0'] = 0
     fillMatrixNonForwardingForRegisterLoadAndBranchInstructions()
+    fillMatrixForwardingForRegisterInstructions()
 
 def handle_ori(line):
     global i, non_forwarding_pipeline_matrix, instructions_registers, stages
@@ -729,6 +778,7 @@ def handle_ori(line):
     REGISTERS[reg[0]]=REGISTERS[reg[1]] | const
     REGISTERS['x0'] = 0
     fillMatrixNonForwardingForRegisterLoadAndBranchInstructions()
+    fillMatrixForwardingForRegisterInstructions()
 
 def handle_or(line):
     global i, non_forwarding_pipeline_matrix, instructions_registers, stages
@@ -742,6 +792,7 @@ def handle_or(line):
     REGISTERS[reg[0]]=REGISTERS[reg[1]] | REGISTERS[reg[2]]
     REGISTERS['x0'] = 0
     fillMatrixNonForwardingForRegisterLoadAndBranchInstructions()
+    fillMatrixForwardingForRegisterInstructions()
 
 def handle_and(line):
     global i, non_forwarding_pipeline_matrix, instructions_registers, stages
@@ -755,6 +806,7 @@ def handle_and(line):
     REGISTERS[reg[0]]=REGISTERS[reg[1]] & REGISTERS[reg[2]]
     REGISTERS['x0'] = 0
     fillMatrixNonForwardingForRegisterLoadAndBranchInstructions()
+    fillMatrixForwardingForRegisterInstructions()
 
 def handle_sll(line):
     global i, non_forwarding_pipeline_matrix, instructions_registers, stages
@@ -795,6 +847,7 @@ def handle_la(line):
         del instructions_registers[0]
     instructions_registers.append((reg))
     fillMatrixNonForwardingForRegisterLoadAndBranchInstructions()
+    fillMatrixForwardingForRegisterInstructions()
 
 def callFunction(opcode,line):
     global i
