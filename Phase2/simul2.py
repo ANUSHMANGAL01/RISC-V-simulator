@@ -103,8 +103,21 @@ def clear_processed_lines():
     PROCESSED_LINES=[]
 
 def clear_all():
-    global i,lines, MEM_POINTER
-    lines=[]
+    global i,lines, MEM_POINTER,count_of_stalls_for_non_forwarding, count_of_stalls_for_forwarding
+    global line_numbers_causing_stalls_for_non_forwarding,line_numbers_causing_stalls_for_forwarding
+    global ipc_forwarding, ipc_non_forwarding
+    ipc_forwarding =0 
+    ipc_non_forwarding =0 
+    line_numbers_causing_stalls_for_non_forwarding=[]
+    line_numbers_causing_stalls_for_forwarding=[]
+    count_of_stalls_for_non_forwarding = 0
+    count_of_stalls_for_forwarding = 0
+    global non_forwarding_pipeline_matrix
+    non_forwarding_pipeline_matrix = []
+    global forwarding_pipeline_matrix
+    forwarding_pipeline_matrix = []
+    global instructions_registers
+    instructions_registers=[]
     i=0
     MEM_POINTER = 268500992
     clear_reg()

@@ -30,7 +30,7 @@ def status_display(str1):
     status_text.insert(END,system_time+" : ",'time')
     status_text.insert(END, str1 + "\n")
     status_text.pack(side=TOP, fill=X)
-    scroll_status.config(command=code_text.yview)
+    scroll_status.config(command=status_text.yview)
     status_text.configure(state='disabled')
 
 def status_display_3(str1,str2,str3):
@@ -44,7 +44,7 @@ def status_display_3(str1,str2,str3):
     status_text.insert(END,str2,'file_upload')
     status_text.insert(END, str3 + "\n")
     status_text.pack(side=TOP, fill=X)
-    scroll_status.config(command=code_text.yview)
+    scroll_status.config(command=status_text.yview)
     status_text.configure(state='disabled')
 
 # Enabling dpi scaling
@@ -171,6 +171,9 @@ def clear_all():
     code_text.configure(state='normal')
     code_text.delete("1.0","end")
     code_text.configure(state='disabled')
+    status_text.configure(state='normal')
+    status_text.delete("1.0","end")
+    status_text.configure(state='disabled')
     reg_mem_text.delete("1.0", "end")
     if(reg_button.cget('bg')=='cyan'):
         display_registers()
@@ -302,6 +305,10 @@ def handle_non_forwarding():
     display_pipeline_non_forwarding_matrix(True)
     return
 
+def handle_statistics():
+    display_statistics()
+    return
+
 # Status Panel -> Return status of program (whether it has finshed or there are some errors
 status_panel = PanedWindow(simulator_body,orient=VERTICAL, relief="raised", bg="black",bd=0)
 simulator_body.add(status_panel)
@@ -318,18 +325,26 @@ pipeline_forwarding_button.pack(side=LEFT,padx=10, pady=1)
 pipeline_non_forwarding_button = custom_button(status_title,"Pipeline non-Forwarding","cyan","black",20, handle_non_forwarding)
 pipeline_non_forwarding_button.pack(side=LEFT,padx=10, pady=1)
 
+statistics_button = custom_button(status_title,"Statistics","cyan","black",15, handle_statistics)
+statistics_button.pack(side=LEFT,padx=10, pady=1)
+
 status_panel_body = PanedWindow(status_panel, bg="black")
 status_panel.add(status_panel_body)
 
 scroll_status = Scrollbar(status_panel_body, orient="vertical")
 scroll_status.pack(side=LEFT,fill=Y)
 
+scroll_status_1 = Scrollbar(status_panel_body, orient="horizontal")
+scroll_status_1.pack(side=BOTTOM,fill=X)
+
 # Handling gui data
 code_text = Text(code_body, yscrollcommand = scroll_code.set,font=("Roboto", 14) )
 
 reg_mem_text = Text(reg_mem_body,yscrollcommand=scroll_reg.set,font=("Roboto", 14),bg="cyan")
 
-status_text = Text(status_panel_body,yscrollcommand=scroll_reg.set,font=("Roboto", 14),bg="black",fg='cyan')
+status_text = Text(status_panel_body,yscrollcommand=scroll_status.set,xscrollcommand=scroll_status_1.set,font=("Roboto", 14),bg="black",fg='cyan',wrap="none")
+scroll_status.config(command=status_text.yview)
+scroll_status_1.config(command=status_text.xview)
 
 def display_registers():
     reg_mem_text.configure(state='normal')
@@ -366,28 +381,50 @@ def display_data():
 def display_pipeline_forwarding_matrix(status):
     status_text.config(state='normal',bg='white',fg='black')
     status_text.delete("1.0","end")
-    # if(status == False):
-    #     status_text.insert(END,"Please run the simulation")
-    #     status_text.config(state='disabled')
-    #     return
-
+    status_text.insert(END, "\n")
     for i in simul2.forwarding_pipeline_matrix:
         for j in i:
             status_text.insert(END, "\t"+j)
         status_text.insert(END,'\n')
-
     status_text.config(state='disabled')
 
 def display_pipeline_non_forwarding_matrix(status):
     status_text.config(state='normal',bg='white',fg='black')
     status_text.delete("1.0","end")
-
+    status_text.insert(END,"\n")
     for i in simul2.non_forwarding_pipeline_matrix:
         for j in i:
             status_text.insert(END, "\t"+j)
-        status_text.insert(END,'\n\n')
+        status_text.insert(END,'\n')
     status_text.config(state='disabled')
 
+
+def display_statistics():
+    status_text.config(state='normal',bg='black',fg='cyan')
+    status_text.delete("1.0","end")
+    status_text.tag_config('statements', foreground="#03A062")
+    status_text.tag_config('data', foreground="#FF0000")
+    status_text.insert(END,"Count of unique stalls in case of pipeline forwarding :\t","statements")
+    status_text.insert(END,str(simul2.count_of_stalls_for_forwarding)+'\n','data')
+    status_text.insert(END,"Instructions per cycle in case of pipeline forwarding :\t","statements")
+    status_text.insert(END,str(simul2.ipc_forwarding)+'\n','data')
+    status_text.insert(END,"Instructions containing stalls(new stalls) in case of pipeline forwarding :\t","statements")
+    set1 = set(simul2.line_numbers_causing_stalls_for_forwarding)
+    if(len(set1)==0):
+        status_text.insert(END,'\n')
+    else:
+        status_text.insert(END,str(set1)+'\n','data')
+    status_text.insert(END,"\nCount of unique stalls in case of pipeline non-forwarding :\t","statements")
+    status_text.insert(END,str(simul2.count_of_stalls_for_non_forwarding)+'\n','data') 
+    status_text.insert(END,"Instructions per cycle in case of pipeline non-forwarding :\t","statements")
+    status_text.insert(END,str(simul2.ipc_non_forwarding)+'\n','data')
+    status_text.insert(END,"Instructions containing stalls(new stalls) in case of pipeline non-forwarding :\t","statements")
+    set2 = set(simul2.line_numbers_causing_stalls_for_non_forwarding)
+    if(len(set2)==0):
+        status_text.insert(END,'\n')
+    else:
+        status_text.insert(END,str(set2)+'\n','data')
+    status_text.config(state='disabled')
 
 display_data()
 display_registers()
