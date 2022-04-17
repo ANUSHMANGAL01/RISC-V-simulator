@@ -4,6 +4,9 @@ from gettext import find
 global stages
 stages = ["IF", "ID", "EX", "ME", "WB"]
 global i, MEMORY ,REGISTERS, LABELS, ASSEMBLER_DIRECTIVES,PROCESSED_LINES,lines, count_of_stalls_for_non_forwarding, count_of_stalls_for_forwarding ,line_numbers_causing_stalls_for_non_forwarding,line_numbers_causing_stalls_for_forwarding
+global ipc_forwarding, ipc_non_forwarding
+ipc_forwarding =0 
+ipc_non_forwarding =0 
 line_numbers_causing_stalls_for_non_forwarding=[]
 line_numbers_causing_stalls_for_forwarding=[]
 count_of_stalls_for_non_forwarding = 0
@@ -172,17 +175,18 @@ def isConstantAndNeededLength(word, length):
 
 def fillMatrixNonForwardingForRegisterLoadJumpAndBranchInstructions():
     global i, non_forwarding_pipeline_matrix, instructions_registers, stages, count_of_stalls_for_non_forwarding, line_numbers_causing_stalls_for_non_forwarding
-    
     if(len(non_forwarding_pipeline_matrix)==0):
         non_forwarding_pipeline_matrix.append(stages)
         return
-
+    flag_before_stall = False
     if(check_data_dependency()==0):
         prev_index = getIndex(non_forwarding_pipeline_matrix[len(non_forwarding_pipeline_matrix)-1], "IF")
         if(len(instructions_registers)>1 and  instructions_registers[len(instructions_registers)-2][0] == '-1'):
             to_add=[" "]*(1 + getIndex(non_forwarding_pipeline_matrix[len(non_forwarding_pipeline_matrix)-1], "EX"))
+            flag_before_stall = True
         elif(len(instructions_registers)>1 and  instructions_registers[len(instructions_registers)-2][0] == '-3'):
             to_add=[" "]*(1 + getIndex(non_forwarding_pipeline_matrix[len(non_forwarding_pipeline_matrix)-1], "ID"))
+            flag_before_stall = True
         else:
             to_add = ["  "]*(prev_index+1)
         lastRow = non_forwarding_pipeline_matrix[len(non_forwarding_pipeline_matrix)-1]
@@ -203,7 +207,9 @@ def fillMatrixNonForwardingForRegisterLoadJumpAndBranchInstructions():
         prev_index = getIndex(non_forwarding_pipeline_matrix[len(non_forwarding_pipeline_matrix)-1], "IF")
         if(len(instructions_registers)>1 and instructions_registers[len(instructions_registers)-2][0] == '-1'):
             to_add=[" "]*(1 + getIndex(non_forwarding_pipeline_matrix[len(non_forwarding_pipeline_matrix)-1], "EX"))
+            flag_before_stall = True
         elif(len(instructions_registers)>1 and  instructions_registers[len(instructions_registers)-2][0] == '-3'):
+            flag_before_stall = True
             to_add=[" "]*(1 + getIndex(non_forwarding_pipeline_matrix[len(non_forwarding_pipeline_matrix)-1], "ID"))
         else:
             to_add = ["  "]*(prev_index+1)
@@ -232,8 +238,10 @@ def fillMatrixNonForwardingForRegisterLoadJumpAndBranchInstructions():
     elif(check_data_dependency()==2):
         prev_index = getIndex(non_forwarding_pipeline_matrix[len(non_forwarding_pipeline_matrix)-1], "IF")
         if(len(instructions_registers)>1 and instructions_registers[len(instructions_registers)-2][0] == '-1'):
+            flag_before_stall = True
             to_add=[" "]*(1 + getIndex(non_forwarding_pipeline_matrix[len(non_forwarding_pipeline_matrix)-1], "EX"))
         elif(len(instructions_registers)>1 and  instructions_registers[len(instructions_registers)-2][0] == '-3'):
+            flag_before_stall = True
             to_add=[" "]*(1 + getIndex(non_forwarding_pipeline_matrix[len(non_forwarding_pipeline_matrix)-1], "ID"))
         else:
             to_add = ["  "]*(prev_index+1)
@@ -261,23 +269,36 @@ def fillMatrixNonForwardingForRegisterLoadJumpAndBranchInstructions():
         while(stages_pointer<5):
             to_add.append(stages[stages_pointer])
             stages_pointer+=1
+
+    if(flag_before_stall):
+        lastRow = non_forwarding_pipeline_matrix[len(non_forwarding_pipeline_matrix)-1]
+        current_IF_index = to_add.index("IF")
+        current_Stall_index = current_IF_index-1
+        last_IF_index = lastRow.index("IF")
+        while(current_Stall_index>last_IF_index):
+            to_add[current_Stall_index] = "ST"
+            if lastRow[current_Stall_index] != "ST":
+                count_of_stalls_for_non_forwarding+=1
+                line_numbers_causing_stalls_for_non_forwarding.append(i)
+            current_Stall_index-=1
+
     non_forwarding_pipeline_matrix.append(to_add)
-    print("Non-forwarding --------------------------------------------------------------\n")
-    print("Instruction Registers :\n")
-    print(instructions_registers)
-    print("\n")
-    print("Matrix :\n")
-    print(non_forwarding_pipeline_matrix)
-    print("\n")
-    print("Count of stalls :\n")
-    print(count_of_stalls_for_non_forwarding)
-    print("\n")
-    s = set(line_numbers_causing_stalls_for_non_forwarding)
-    print("Line numbers :\n")
-    if(len(s)):
-        print(s)
-    print("\n")
-    print("-----------------------------------------------------------------------------\n")
+    # print("Non-forwarding --------------------------------------------------------------\n")
+    # print("Instruction Registers :\n")
+    # print(instructions_registers)
+    # print("\n")
+    # print("Matrix :\n")
+    # print(non_forwarding_pipeline_matrix)
+    # print("\n")
+    # print("Count of stalls :\n")
+    # print(count_of_stalls_for_non_forwarding)
+    # print("\n")
+    # s = set(line_numbers_causing_stalls_for_non_forwarding)
+    # print("Line numbers :\n")
+    # if(len(s)):
+    #     print(s)
+    # print("\n")
+    # print("-----------------------------------------------------------------------------\n")
 
 def fillMatrixNonForwardingForStoreInstruction():
     global i, non_forwarding_pipeline_matrix, instructions_registers, stages, count_of_stalls_for_non_forwarding, line_numbers_causing_stalls_for_non_forwarding
@@ -285,11 +306,14 @@ def fillMatrixNonForwardingForStoreInstruction():
         non_forwarding_pipeline_matrix.append(stages)
         return
     
+    flag_before_stall = False
     lastRow = non_forwarding_pipeline_matrix[len(non_forwarding_pipeline_matrix)-1]
     prev_index = getIndex(lastRow, "IF")
     if(len(instructions_registers)>1 and instructions_registers[len(instructions_registers)-2][0] == '-1'):
+        flag_before_stall = True
         to_add=[" "]*(1 + getIndex(non_forwarding_pipeline_matrix[len(non_forwarding_pipeline_matrix)-1], "EX"))
     elif(len(instructions_registers)>1 and  instructions_registers[len(instructions_registers)-2][0] == '-3'):
+        flag_before_stall = True
         to_add=[" "]*(1 + getIndex(non_forwarding_pipeline_matrix[len(non_forwarding_pipeline_matrix)-1], "ID"))
     else:
         to_add = ["  "]*(prev_index+1)
@@ -389,6 +413,18 @@ def fillMatrixNonForwardingForStoreInstruction():
             continue
         to_add.append(stages[stages_pointer])
         stages_pointer+=1 
+    
+    if(flag_before_stall):
+        lastRow = non_forwarding_pipeline_matrix[len(non_forwarding_pipeline_matrix)-1]
+        current_IF_index = to_add.index("IF")
+        current_Stall_index = current_IF_index-1
+        last_IF_index = lastRow.index("IF")
+        while(current_Stall_index>last_IF_index):
+            to_add[current_Stall_index] = "ST"
+            if lastRow[current_Stall_index] != "ST":
+                count_of_stalls_for_non_forwarding+=1
+                line_numbers_causing_stalls_for_non_forwarding.append(i)
+            current_Stall_index-=1
     non_forwarding_pipeline_matrix.append(to_add)  
     return  
 
@@ -398,9 +434,10 @@ def fillMatrixForwardingForRegisterLoadJumpAndBranchInstructions():
         forwarding_pipeline_matrix.append(stages)
         return
     
-    
+    flag_before_stall = False
     prev_index = getIndex(forwarding_pipeline_matrix[len(forwarding_pipeline_matrix)-1], "IF")
     if(len(instructions_registers)>1 and ( instructions_registers[len(instructions_registers)-2][0] == '-1' or instructions_registers[len(instructions_registers)-2][0] == '-3' )):
+        flag_before_stall = True
         to_add=[" "]*(1 + getIndex(forwarding_pipeline_matrix[len(forwarding_pipeline_matrix)-1], "ID"))
     else:
         to_add = ["  "]*(prev_index+1)
@@ -444,35 +481,48 @@ def fillMatrixForwardingForRegisterLoadJumpAndBranchInstructions():
             to_add.append("ST")
             continue
         to_add.append(stages[stages_pointer])
-        stages_pointer+=1   
+        stages_pointer+=1
+    
+    if(flag_before_stall):
+        lastRow = forwarding_pipeline_matrix[len(forwarding_pipeline_matrix)-1]
+        current_IF_index = to_add.index("IF")
+        current_Stall_index = current_IF_index-1
+        last_IF_index = lastRow.index("IF")
+        while(current_Stall_index>last_IF_index):
+            to_add[current_Stall_index] = "ST"
+            if lastRow[current_Stall_index] != "ST":
+                count_of_stalls_for_forwarding+=1
+                line_numbers_causing_stalls_for_forwarding.append(i)
+            current_Stall_index-=1   
     forwarding_pipeline_matrix.append(to_add)
 
-    print("Forwarding --------------------------------------------------------------\n")
-    print("Instruction Registers :\n")
-    print(instructions_registers)
-    print("\n")
-    print("Matrix :\n")
-    print(forwarding_pipeline_matrix)
-    print("\n")
-    print("Count of stalls :\n")
-    print(count_of_stalls_for_forwarding)
-    print("\n")
-    s = set(line_numbers_causing_stalls_for_forwarding)
-    print("Line numbers :\n")
-    if(len(s)):
-        print(s)
-    print("\n")
-    print("-----------------------------------------------------------------------------\n")
+    # print("Forwarding --------------------------------------------------------------\n")
+    # print("Instruction Registers :\n")
+    # print(instructions_registers)
+    # print("\n")
+    # print("Matrix :\n")
+    # print(forwarding_pipeline_matrix)
+    # print("\n")
+    # print("Count of stalls :\n")
+    # print(count_of_stalls_for_forwarding)
+    # print("\n")
+    # s = set(line_numbers_causing_stalls_for_forwarding)
+    # print("Line numbers :\n")
+    # if(len(s)):
+    #     print(s)
+    # print("\n")
+    # print("-----------------------------------------------------------------------------\n")
 
 def fillMatrixForwardingForStoreInstruction():
     global i,forwarding_pipeline_matrix, instructions_registers, stages, count_of_stalls_for_forwarding, line_numbers_causing_stalls_for_forwarding
     if(len(forwarding_pipeline_matrix)==0  or len(instructions_registers)==0 or len(instructions_registers)==1 ):
         forwarding_pipeline_matrix.append(stages)
         return
-    
+    flag_before_stall = False
     lastRow = non_forwarding_pipeline_matrix[len(forwarding_pipeline_matrix)-1]
     prev_index = getIndex(lastRow, "IF")
     if(len(instructions_registers)>1 and ( instructions_registers[len(instructions_registers)-2][0] == '-1' or instructions_registers[len(instructions_registers)-2][0] == '-3' )):
+        flag_before_stall = True
         to_add=[" "]*(1 + getIndex(forwarding_pipeline_matrix[len(forwarding_pipeline_matrix)-1], "ID"))
     else:
         to_add = ["  "]*(prev_index+1)
@@ -570,6 +620,18 @@ def fillMatrixForwardingForStoreInstruction():
             continue
         to_add.append(stages[stages_pointer])
         stages_pointer+=1 
+    
+    if(flag_before_stall):
+        lastRow = forwarding_pipeline_matrix[len(forwarding_pipeline_matrix)-1]
+        current_IF_index = to_add.index("IF")
+        current_Stall_index = current_IF_index-1
+        last_IF_index = lastRow.index("IF")
+        while(current_Stall_index>last_IF_index):
+            to_add[current_Stall_index] = "ST"
+            if lastRow[current_Stall_index] != "ST":
+                count_of_stalls_for_forwarding+=1
+                line_numbers_causing_stalls_for_forwarding.append(i)
+            current_Stall_index-=1   
     forwarding_pipeline_matrix.append(to_add)  
     return  
 
@@ -1210,7 +1272,7 @@ def load_code():
 process_lines()
 
 def main():
-    global i,lines,REGISTERS,MEMORY,LABELS
+    global i,lines,REGISTERS,MEMORY,LABELS, ipc_forwarding, ipc_non_forwarding, non_forwarding_pipeline_matrix, forwarding_pipeline_matrix
     find_labels(0)
     i= LABELS["main"]
     # print(i)
@@ -1225,6 +1287,9 @@ def main():
         i+=1
     print(REGISTERS)
     print(MEMORY[0:10])
+    ipc_forwarding = len(forwarding_pipeline_matrix[len(forwarding_pipeline_matrix)-1])/len(forwarding_pipeline_matrix)
+    ipc_non_forwarding = len(non_forwarding_pipeline_matrix[len(non_forwarding_pipeline_matrix)-1])/len(non_forwarding_pipeline_matrix)
+
 
 # main()
 
