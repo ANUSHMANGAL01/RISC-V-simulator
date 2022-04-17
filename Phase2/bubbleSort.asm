@@ -25,7 +25,7 @@ outerloop:
         bgt x13, x15, swap
         addi x10, x10, 4
         addi x12, x12, 1
-        j innerloop
+        # j innerloop
     swap:
        mv x16, x13 
        mv x13, x15 
@@ -34,10 +34,10 @@ outerloop:
        sw x15, 4(x10)
        addi x10, x10, 4 
        addi x12, x12, 1
-       j innerloop
+       # j innerloop
     innerend:
         la x10, Array
         addi x11, x11, -1
-        j outerloop
+        # j outerloop
     outerend:
         li x31, 9999 

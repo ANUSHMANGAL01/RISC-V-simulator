@@ -28,6 +28,7 @@
 main:
 add x1, x2, x3
 add x4, x5, x6
+j label
 beq x1, x4, label
 label: 
 add x10, x1, x12
@@ -35,5 +36,6 @@ add x10, x1, x12
 # main:
 # li x2, 268500994
 # lw x1,0(x2)
-# add x4, x1, x6
+# lw x3, 268500994(x1)
+# add x4, x3, x6
 # add x1, x4, x1
