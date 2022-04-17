@@ -4,8 +4,8 @@
 
 - Clone the repo in your system
 - make the desired .s or .asm file in folder
-- Open gui.py
-- Run gui.py
+- Open gui2.py
+- Run gui2.py
 - Upload file using 'upload file' option in top left corner
 - By default, the window will show the bubbleSort.asm file
 
