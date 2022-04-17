@@ -373,22 +373,19 @@ def display_pipeline_forwarding_matrix(status):
 
     for i in simul2.forwarding_pipeline_matrix:
         for j in i:
-            status_text.insert(END, "  "+j)
+            status_text.insert(END, "\t"+j)
         status_text.insert(END,'\n')
+
     status_text.config(state='disabled')
 
 def display_pipeline_non_forwarding_matrix(status):
     status_text.config(state='normal',bg='white',fg='black')
     status_text.delete("1.0","end")
-    # if(status == False):
-    #     status_text.insert(END,"Please run the simulation")
-    #     status_text.config(state='disabled')
-    #     return
 
     for i in simul2.non_forwarding_pipeline_matrix:
         for j in i:
-            status_text.insert(END, "  "+j)
-        status_text.insert(END,'\n')
+            status_text.insert(END, "\t"+j)
+        status_text.insert(END,'\n\n')
     status_text.config(state='disabled')
 
 
