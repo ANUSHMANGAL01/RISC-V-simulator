@@ -1336,7 +1336,8 @@ def main():
     print(MEMORY[0:10])
     ipc_forwarding = len(forwarding_pipeline_matrix[len(forwarding_pipeline_matrix)-1])/len(forwarding_pipeline_matrix)
     ipc_non_forwarding = len(non_forwarding_pipeline_matrix[len(non_forwarding_pipeline_matrix)-1])/len(non_forwarding_pipeline_matrix)
-
+    ipc_forwarding = 1.0/ipc_forwarding
+    ipc_non_forwarding = 1.0/ipc_non_forwarding
 
 # main()
 
